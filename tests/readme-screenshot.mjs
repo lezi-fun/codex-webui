@@ -7,7 +7,6 @@ const output=resolve(root,'docs/assets/overview.png');
 mkdirSync(resolve(root,'docs/assets'),{recursive:true});
 const browser=await chromium.launch(launchOptions());
 const page=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
-await page.route('**/assets/codex-motion/*.json',route=>route.fulfill({status:404,contentType:'application/json',body:'{}'}));
 await page.goto('http://127.0.0.1:8899',{waitUntil:'networkidle'});
 await page.waitForFunction(()=>globalThis.__codexWebuiDebug?.state?.config?.defaultCwd);
 await page.evaluate(async()=>{

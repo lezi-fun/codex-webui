@@ -187,11 +187,9 @@ bun run test:e2e
 
 The real approval E2E asks Codex to execute a harmless command, waits for the actual approval request, clicks **Allow once**, verifies the result, and cleans up its temporary file.
 
-## Optional local Codex assets
+## Codex visual assets
 
-This repository does not distribute Codex.app brand images or animation JSON. The open-source version uses a neutral fallback mark and Lucide-based activity fallbacks.
-
-A local installation may use compatible assets for personal experimentation, subject to the rights and terms attached to those assets. See [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
+The repository currently includes Codex-style brand and motion assets extracted from a local Codex.app installation to reproduce the desktop experience. Their source and status are documented in [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md). These assets are not covered by this repository's MIT license and may be removed or replaced if requested by the relevant rights holder.
 
 ## Known limitations
 

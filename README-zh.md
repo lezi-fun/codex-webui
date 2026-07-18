@@ -187,11 +187,9 @@ bun run test:e2e
 
 真实审批 E2E 会让 Codex 请求执行一条无害命令，等待真实审批框，点击 **Allow once**，验证执行结果并清理临时文件。
 
-## 可选本地 Codex 资源
+## Codex 视觉资源
 
-本仓库不分发 Codex.app 品牌图片或动画 JSON。开源版本默认使用中性标识和 Lucide loading fallback。
-
-拥有本地 Codex.app 的用户可以在符合相关权利和条款的前提下，仅为个人实验使用兼容资源。详见 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。
+为了复刻 Codex Desktop 体验，仓库当前包含从本地 Codex.app 安装中提取的品牌和动画资源。来源和状态记录在 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) 中。这些资源不属于仓库 MIT License 的授权范围；如果相关权利人提出要求，将移除或替换。
 
 ## 已知限制
 

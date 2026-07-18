@@ -1,7 +1,5 @@
 node_modules/
 public/app.bundle.js
-public/assets/codex-motion/
-public/assets/codex-app-icon*.png
 docs/app-server-schema/
 .artifacts/
 /index.html

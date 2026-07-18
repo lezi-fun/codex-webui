@@ -89,8 +89,8 @@ async function openThread(id){
 
 function renderHeader(){const t=state.active;if(!t)return;$('#threadTitle').textContent=titleOf(t);$('#threadPath').textContent=shortPath(t.cwd);setWorkspace(t.cwd||state.config.home);$('#threadSource').textContent=t.source||'local'}
 function renderThread(thread,loadMore=0){const root=$('#conversation'),turns=thread.turns||[];state.turnWindow=createTurnWindow(turns,DEFAULT_TURN_PAGE_SIZE,state.turnWindow?.threadId===thread.id?state.turnWindow.start:undefined,loadMore);state.turnWindow.threadId=thread.id;root.innerHTML='';if(state.turnWindow.hiddenCount){const more=document.createElement('button');more.className='load-older';more.textContent=`Load earlier messages (${state.turnWindow.hiddenCount})`;more.onclick=()=>renderThread(thread,DEFAULT_TURN_PAGE_SIZE);root.append(more)}for(const turn of state.turnWindow.visible)renderTurn(turn,root);if(!root.children.length)showEmpty();else if(!loadMore)scrollBottom()}
-function showEmpty(){const root=$('#conversation');root.innerHTML='<div class="empty-state" id="emptyState"><div class="empty-mark codex-fallback" aria-hidden="true">C</div><h1>What do you want to build?</h1><p>Ask Codex to work in your project. It can inspect files, run commands, make changes, and verify the result.</p></div>'}
-function assistantMark(){return '<div class="assistant-mark codex-fallback" aria-hidden="true">C</div>'}
+function showEmpty(){const root=$('#conversation');root.innerHTML='<div class="empty-state" id="emptyState"><img class="empty-mark" src="/assets/codex-app-icon-128.png" alt="Codex"><h1>What do you want to build?</h1><p>Ask Codex to work in your project. It can inspect files, run commands, make changes, and verify the result.</p></div>'}
+function assistantMark(){return '<img class="assistant-mark" src="/assets/codex-app-icon-128.png" alt="">'}
 function renderTurn(turn,root=$('#conversation')){for(const item of turn.items||[])upsertItem(item,turn.id,root,false)}
 function textFromInput(content=[]){return content.filter(x=>x.type==='text').map(x=>x.text).join('\n')}
 function upsertItem(item,turnId,root=$('#conversation'),live=true){
