@@ -1,0 +1,37 @@
+name: Feature request
+description: Suggest a focused improvement to Codex WebUI
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the desired interaction and expected result.
+    validations:
+      required: true
+  - type: textarea
+    id: protocol
+    attributes:
+      label: Codex protocol support
+      description: Which app-server method or notification would drive this feature? Write unknown if unsure.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: This feature can be driven by real state rather than a static mock.
+          required: true
+        - label: I searched existing issues and pull requests.
+          required: true

@@ -1,0 +1,71 @@
+name: Bug report
+description: Report a reproducible problem in Codex WebUI
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Remove credentials, private prompts, tokens, and personal paths before submitting.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Start the server with ...
+        2. Open ...
+        3. Send ...
+        4. Observe ...
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: macOS 15, Ubuntu 24.04, ...
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Bun / Codex CLI / browser versions
+      placeholder: Bun 1.3.x, Codex 0.x, Chrome 1xx
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface
+      options:
+        - Threads or models
+        - Streaming or tool activity
+        - Approval requests
+        - Review or diff
+        - Folder selection
+        - Markdown or KaTeX
+        - Mobile layout
+        - Server or WebSocket bridge
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs or screenshots
+      description: Do not include credentials, private prompts, or personal data.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues.
+          required: true
+        - label: I removed secrets and private information.
+          required: true

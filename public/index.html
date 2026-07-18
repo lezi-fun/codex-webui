@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#171717">
+<title>Codex WebUI</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/vendor/katex/katex.min.css">
+<script src="/app.bundle.js" type="module"></script>
+</head>
+<body>
+<div id="app" class="app-shell">
+  <header class="topbar">
+    <div class="window-brand"><span class="codex-mark codex-fallback" aria-hidden="true">C</span><strong>Codex</strong><span class="webui-label">WebUI</span></div>
+    <div class="thread-heading"><span id="threadTitle">New task</span><span id="threadPath"></span></div>
+    <div class="top-actions">
+      <button class="icon-button" id="toggleSidebar" title="Toggle sidebar"><span class="icon-slot" data-icon="panelLeft"></span></button>
+      <button class="icon-button" id="refreshButton" title="Refresh"><span class="icon-slot" data-icon="refreshCw"></span></button>
+    </div>
+  </header>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <button class="new-task" id="newTask"><span class="icon-slot" data-icon="plus"></span><span>New task</span><kbd>⌘K</kbd></button>
+      <label class="search-box"><span class="icon-slot" data-icon="search"></span><input id="threadSearch" type="search" placeholder="Search tasks"></label>
+    </div>
+    <div class="thread-list" id="threadList"><div class="list-state">Connecting to Codex…</div></div>
+    <div class="sidebar-footer">
+      <button class="project-button" id="projectButton">
+        <span class="project-glyph icon-slot" data-icon="folderOpen"></span>
+        <span class="project-copy"><strong id="projectName">codex-webui</strong><span id="projectPath">~/projects/codex-webui</span></span>
+        <span class="icon-slot chevron" data-icon="chevronDown"></span>
+      </button>
+      <div class="connection-row"><span class="status-dot" id="statusDot"></span><span id="statusText">Connecting</span><span class="connection-spacer"></span><span id="threadSource">local</span></div>
+    </div>
+  </aside>
+
+  <main class="conversation-shell">
+    <section class="conversation" id="conversation">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-mark codex-fallback" aria-hidden="true">C</div>
+        <h1>What do you want to build?</h1>
+        <p>Ask Codex to work in your project. It can inspect files, run commands, make changes, and verify the result.</p>
+      </div>
+    </section>
+    <div class="composer-dock">
+      <form class="composer" id="composer">
+        <textarea id="prompt" rows="1" placeholder="Ask Codex anything, @ to mention files, / for commands"></textarea>
+        <div class="composer-footer">
+          <div class="composer-left">
+            <button type="button" class="utility-button icon-only" title="Attach"><span class="icon-slot" data-icon="paperclip"></span></button>
+            <button type="button" class="utility-button workspace-button" id="workspaceButton" title="Change project folder"><span class="icon-slot" data-icon="folderOpen"></span><span id="workspaceName">codex-webui</span><span class="icon-slot chevron" data-icon="chevronDown"></span></button>
+            <button type="button" class="utility-button" id="modeButton"><span class="icon-slot" data-icon="list"></span><span>Agent</span></button>
+            <div class="model-picker" id="modelPicker">
+              <button type="button" class="select-button model-trigger" id="modelButton" aria-haspopup="listbox" aria-expanded="false"><span id="modelLabel">Loading models…</span><span class="icon-slot chevron" data-icon="chevronDown"></span></button>
+              <div class="model-menu" id="modelMenu" role="listbox" hidden></div>
+            </div>
+            <select id="effortSelect" class="select-button compact" aria-label="Reasoning effort"><option value="medium">medium</option></select>
+          </div>
+          <div class="composer-right">
+            <span class="context-label" id="contextLabel">0%</span>
+            <span class="context-ring" id="contextRing" aria-label="Context usage"></span>
+            <button class="send-button" id="sendButton" type="submit" title="Send"><span class="icon-slot" data-icon="arrowUp"></span></button>
+          </div>
+        </div>
+      </form>
+      <div class="composer-caption"><span>Codex can make mistakes. Review changes before applying them.</span></div>
+    </div>
+  </main>
+
+  <aside class="changes-panel" id="changesPanel">
+    <div class="panel-tabs"><button class="panel-tab active" id="changesTab" data-panel="changes">Changes <span id="changeCount">0</span></button><button class="panel-tab" id="filesTab" data-panel="files">Files</button></div>
+    <div class="change-summary"><span id="changeSummary">No changes yet</span><span class="review-stats" id="reviewStats"></span><button class="icon-button small" title="Toggle word wrap" id="reviewWrap"><span class="icon-slot" data-icon="wrapText"></span></button><button class="icon-button small" title="Collapse all diffs" id="reviewExpand"><span class="icon-slot" data-icon="chevronsUp"></span></button><button class="icon-button small" title="Switch to split diff" id="reviewMode"><span class="icon-slot" data-icon="columns2"></span></button><button class="icon-button small" title="Undo changes" id="reviewPatch"><span class="icon-slot" data-icon="undo"></span></button><button class="icon-button small" title="Close panel" id="closeChanges"><span class="icon-slot" data-icon="x"></span></button></div>
+    <div class="change-list" id="changeList"><div class="panel-empty">Changes made by Codex will appear here.</div></div>
+  </aside>
+</div>
+<dialog class="folder-dialog" id="folderDialog">
+  <form method="dialog" class="folder-card">
+    <div class="folder-head"><div><strong>Choose project folder</strong><span>Codex will use this as the working directory.</span></div><button class="icon-button" value="cancel" aria-label="Close"><span class="icon-slot" data-icon="x"></span></button></div>
+    <div class="folder-path-row"><button type="button" class="icon-button" id="folderUp" title="Parent folder"><span class="icon-slot" data-icon="arrowUp"></span></button><input id="folderPathInput" spellcheck="false" autocomplete="off"><button type="button" class="folder-go" id="folderGo">Go</button></div>
+    <div class="folder-list" id="folderList"><div class="list-state">Loading folders…</div></div>
+    <div class="folder-actions"><span id="folderSelection">No folder selected</span><button value="cancel" class="folder-cancel">Cancel</button><button type="button" class="folder-confirm" id="folderConfirm" disabled>Use this folder</button></div>
+  </form>
+</dialog>
+<div class="toast" id="toast"></div>
+</body>
+</html>
