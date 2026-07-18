@@ -23,15 +23,17 @@ describe("Codex account profile", () => {
     }));
 
     let request: Request | undefined;
+    let redirect: RequestRedirect | undefined;
     const profile = await fetchCodexProfile({
       authPath,
       fetchImpl: async (input, init) => {
         request = new Request(input, init);
+        redirect = init?.redirect;
         return Response.json({
           profile: {
             username: "zimu",
             display_name: "Zimu Yang",
-            profile_picture_url: "https://cdn.example/avatar.png",
+            profile_picture_url: "https://cdn.auth0.com/avatars/test.png",
           },
           stats: {},
           metadata: {},
@@ -42,9 +44,10 @@ describe("Codex account profile", () => {
     expect(request?.url).toBe("https://chatgpt.com/backend-api/wham/profiles/me");
     expect(request?.headers.get("authorization")).toBe("Bearer test-access-token");
     expect(request?.headers.get("chatgpt-account-id")).toBe("account-123");
+    expect(redirect).toBe("error");
     expect(profile).toEqual({
       displayName: "Zimu Yang",
-      imageUrl: "https://cdn.example/avatar.png",
+      imageUrl: "https://cdn.auth0.com/avatars/test.png",
       username: "zimu",
     });
     expect(JSON.stringify(profile)).not.toContain("test-access-token");
@@ -54,11 +57,11 @@ describe("Codex account profile", () => {
   test("follows the Desktop fallback order for account labels", () => {
     expect(buildAccountIdentity(
       { account: { type: "chatgpt", email: "person@example.com", planType: "plus" }, requiresOpenaiAuth: true },
-      { displayName: "Profile Name", imageUrl: "https://cdn.example/avatar.png", username: "profile" },
+      { displayName: "Profile Name", imageUrl: "https://cdn.auth0.com/avatars/test.png", username: "profile" },
     )).toEqual({
       type: "chatgpt",
       displayName: "Profile Name",
-      imageUrl: "https://cdn.example/avatar.png",
+      imageUrl: "https://cdn.auth0.com/avatars/test.png",
       email: "person@example.com",
       planType: "plus",
       initials: "PN",

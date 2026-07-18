@@ -6,7 +6,13 @@ import { networkInterfaces } from "node:os";
 import { WebSocketServer, WebSocket } from "ws";
 import { defaultBrowseRoots, isDirectory, listFolders, resolveBrowsePath } from "./folder-service.js";
 import { applyReviewPatch } from "./review-service.js";
-import { resolveAccountIdentity } from "./profile-service.js";
+import {
+  createAccountIdentityLoader,
+  fetchProfileAvatar,
+  isLocalAccountRequest,
+  resolveAccountIdentity,
+  toPublicAccountIdentity,
+} from "./profile-service.js";
 
 const host = process.env.HOST || "0.0.0.0";
 const port = Number(process.env.PORT || 8899);
@@ -21,15 +27,10 @@ let seq = 1;
 let codex: ChildProcessWithoutNullStreams | null = null;
 let stdoutBuffer = "";
 let connected = false;
-let accountCache: { expiresAt: number; value: Awaited<ReturnType<typeof resolveAccountIdentity>> } | null = null;
-
-async function getAccountIdentity(refresh = false) {
-  if (!refresh && accountCache && accountCache.expiresAt > Date.now()) return accountCache.value;
+const accountLoader = createAccountIdentityLoader(async (refresh) => {
   const account = await request("account/read", { refreshToken: refresh });
-  const value = await resolveAccountIdentity(account);
-  accountCache = { value, expiresAt: Date.now() + 5 * 60_000 };
-  return value;
-}
+  return resolveAccountIdentity(account);
+});
 
 function startCodex() {
   if (codex && codex.exitCode === null) return;
@@ -57,7 +58,7 @@ function startCodex() {
   codex.stderr.on("data", (data) => console.error("[codex app-server]", String(data).trimEnd()));
   codex.on("exit", (code, signal) => {
     connected = false;
-    accountCache = null;
+    accountLoader.invalidate();
     broadcast({ type: "bridge/status", status: "disconnected", code, signal });
     for (const item of pending.values()) item.reject(new Error("Codex app-server exited"));
     pending.clear();
@@ -115,7 +116,7 @@ function handleCodex(message: any) {
     return;
   }
   if (message.method) {
-    if (message.method === "account/updated") accountCache = null;
+    if (message.method === "account/updated") accountLoader.invalidate();
     broadcast({ type: "codex/notification", payload: message });
   }
 }
@@ -129,6 +130,7 @@ async function handleClient(client: WebSocket, message: any) {
   const id = message.id;
   try {
     if (message.type === "rpc") {
+      if (typeof message.method !== "string" || message.method.startsWith("account/")) throw new Error("Account RPC methods are not available to browser clients");
       const result = await request(message.method, message.params || {});
       client.send(JSON.stringify({ type: "rpc/result", id, result }));
       return;
@@ -164,15 +166,41 @@ const server = createServer(async (req, res) => {
     res.end(JSON.stringify({ home: homeDir, defaultCwd, reviewRoot: reviewRoots[0] }));
     return;
   }
-  if (url.pathname === "/api/account") {
+  if (url.pathname === "/api/account" || url.pathname === "/api/account/avatar") {
+    if (!isLocalAccountRequest(req.socket.remoteAddress, req.headers.host, req.headers["sec-fetch-site"] as string | undefined)) {
+      res.writeHead(403, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+      res.end(JSON.stringify({ error: "Account identity is available only on localhost" }));
+      return;
+    }
     try {
-      const account = await getAccountIdentity(url.searchParams.get("refresh") === "1");
-      res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-      res.end(JSON.stringify(account));
+      const account = await accountLoader.get(url.searchParams.get("refresh") === "1");
+      if (url.pathname === "/api/account") {
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });
+        res.end(JSON.stringify(toPublicAccountIdentity(account)));
+        return;
+      }
+      if (!account.imageUrl) {
+        res.writeHead(404, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+        res.end(JSON.stringify({ error: "No profile avatar" }));
+        return;
+      }
+      const avatar = await fetchProfileAvatar(account.imageUrl);
+      res.writeHead(200, {
+        "content-type": avatar.contentType,
+        "content-length": String(avatar.body.byteLength),
+        "cache-control": "private, max-age=300",
+        "x-content-type-options": "nosniff",
+      });
+      res.end(avatar.body);
     } catch (error) {
       console.warn("[codex-webui] account request failed:", error instanceof Error ? error.message : String(error));
+      if (url.pathname === "/api/account/avatar") {
+        res.writeHead(502, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+        res.end(JSON.stringify({ error: "Profile avatar unavailable" }));
+        return;
+      }
       res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-      res.end(JSON.stringify(await resolveAccountIdentity({ account: null, requiresOpenaiAuth: true })));
+      res.end(JSON.stringify(toPublicAccountIdentity(await resolveAccountIdentity({ account: null, requiresOpenaiAuth: true }))));
     }
     return;
   }

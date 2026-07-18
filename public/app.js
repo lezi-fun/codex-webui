@@ -1,4 +1,4 @@
-import { DEFAULT_TURN_PAGE_SIZE, createTurnWindow, selectModelState } from './ui-core.js';
+import { DEFAULT_TURN_PAGE_SIZE, createLatestRequestGate, createTurnWindow, selectModelState } from './ui-core.js';
 import { renderAssistantMarkdown } from './rendering.js';
 import { codexIcon, hydrateCodexIcons } from './codex-icons.js';
 import { buildApprovalModel, createReviewPreferences, parseUnifiedDiff, permissionRows, splitDiffHunk, summarizeActivity } from './codex-surfaces.js';
@@ -9,6 +9,7 @@ const state = { ws:null, rpcId:1, pending:new Map(), threads:[], active:null, mo
 let folderBrowse={path:'~',parent:null,selected:null};
 const reviewPreferences=createReviewPreferences(JSON.parse(localStorage.getItem('codex-webui-review-preferences')||'{}'));
 let reviewPatchState='undo';
+const accountRequestGate=createLatestRequestGate();
 
 const icons = {
   chevron:codexIcon('chevronRight','activity-chevron'),
@@ -56,14 +57,15 @@ async function loadInitial(refreshAccount=false){
   }catch(e){toast(e.message);}
 }
 async function loadAccount(refresh=false){
-  try{const response=await fetch(`/api/account${refresh?'?refresh=1':''}`,{cache:'no-store'}),account=await response.json();if(!response.ok)throw new Error(account.error||'Cannot load account');state.account=account;renderAccount(account)}catch{renderAccount({displayName:'Settings',imageUrl:null,email:null,planType:null,initials:'?'})}
+  const requestId=accountRequestGate.next();
+  try{const response=await fetch(`/api/account${refresh?'?refresh=1':''}`,{cache:'no-store'}),account=await response.json();if(!response.ok)throw new Error(account.error||'Cannot load account');if(!accountRequestGate.isCurrent(requestId))return;state.account=account;renderAccount(account)}catch{if(accountRequestGate.isCurrent(requestId))renderAccount({displayName:'Settings',avatarUrl:null,planType:null,initials:'?'})}
 }
 function renderAccount(account){
   const displayName=account?.displayName?.trim()||'Settings',initials=account?.initials?.trim()||'?';
-  $('#accountName').textContent=displayName;$('#accountMenuName').textContent=displayName;$('#accountEmail').textContent=account?.email||'';$('#accountEmail').hidden=!account?.email;
+  $('#accountName').textContent=displayName;$('#accountMenuName').textContent=displayName;
   $('#accountPlan').textContent=account?.planType?`${account.planType.charAt(0).toUpperCase()}${account.planType.slice(1)} plan`:account?.type==='apiKey'?'API key':'';
-  const avatar=$('#accountAvatar'),imageUrl=typeof account?.imageUrl==='string'&&/^https:\/\//i.test(account.imageUrl)?account.imageUrl:'';avatar.dataset.imageUrl=imageUrl;avatar.className='account-avatar account-initials';avatar.textContent=initials;
-  if(imageUrl){const image=new Image;image.alt='';image.referrerPolicy='no-referrer';image.src=imageUrl;image.onload=()=>{if(avatar.dataset.imageUrl!==imageUrl)return;avatar.className='account-avatar';avatar.replaceChildren(image)};image.onerror=()=>{if(avatar.dataset.imageUrl!==imageUrl)return;avatar.className='account-avatar account-initials';avatar.textContent=initials}}
+  const avatar=$('#accountAvatar'),avatarUrl=typeof account?.avatarUrl==='string'&&account.avatarUrl.startsWith('/api/account/avatar')?account.avatarUrl:'';avatar.dataset.imageUrl=avatarUrl;avatar.className='account-avatar account-initials';avatar.textContent=initials;
+  if(avatarUrl){const image=new Image;image.alt='';image.src=`${avatarUrl}?v=${Date.now()}`;image.onload=()=>{if(avatar.dataset.imageUrl!==avatarUrl)return;avatar.className='account-avatar';avatar.replaceChildren(image)};image.onerror=()=>{if(avatar.dataset.imageUrl!==avatarUrl)return;avatar.className='account-avatar account-initials';avatar.textContent=initials}}
 }
 function toggleAccountMenu(force){const menu=$('#accountMenu'),open=force??menu.hidden;menu.hidden=!open;$('#accountButton').setAttribute('aria-expanded',String(open))}
 function renderModels(){

@@ -19,7 +19,7 @@ await page.evaluate(async()=>{
  document.querySelector('#projectPath').textContent='~/projects/demo-app';
  document.querySelector('#workspaceName').textContent='demo-app';
  document.querySelector('#modelLabel').textContent='Codex model';
- api.renderAccount({type:'chatgpt',displayName:'Demo User',imageUrl:null,email:'demo@example.com',planType:'plus',initials:'DU'});
+ api.renderAccount({type:'chatgpt',displayName:'Demo User',avatarUrl:null,planType:'plus',initials:'DU'});
  document.querySelector('#threadList').innerHTML=`
    <div class="thread-group">Today</div>
    <button class="thread-item active"><span class="thread-name">Build a responsive settings panel</span><span class="thread-meta"><time>now</time></span></button>

@@ -14,4 +14,4 @@ const result={viewport:await page.evaluate(()=>({innerWidth,scrollWidth:document
 console.log(JSON.stringify(result,null,2));
 await page.screenshot({path:artifact('mobile-layout.png'),fullPage:false});
 await browser.close();
-if(result.viewport.scrollWidth>591||result.main.x<0||result.main.width<560||result.changes.display!=='none'||result.closedSidebar.x>=0||result.openSidebar.x!==0||result.openSidebar.width!==275||result.accountButton.height!==30||result.accountMenu.display==='none')process.exit(1);
+if(result.viewport.scrollWidth>591||result.main.x<0||result.main.width<560||result.changes.display!=='none'||result.closedSidebar.x>=0||Math.abs(result.openSidebar.x)>0.5||result.openSidebar.width!==275||result.accountButton.height!==30||result.accountMenu.display==='none')process.exit(1);

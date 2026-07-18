@@ -12,10 +12,10 @@
     "dev": "bun --watch server.ts",
     "check": "bun build server.ts --target=bun --outfile=/tmp/codex-webui-server-check.js && bun build public/app.js --target=browser --outfile=/tmp/codex-webui-app-check.js",
     "test": "bun run test:unit",
-    "test:unit": "bun test tests/ui-core.test.ts tests/rendering.test.ts tests/folders.test.ts tests/codex-icons.test.ts tests/codex-surfaces.test.ts tests/review-service.test.ts tests/profile-service.test.ts",
+    "test:unit": "bun test tests/ui-core.test.ts tests/rendering.test.ts tests/folders.test.ts tests/codex-icons.test.ts tests/codex-surfaces.test.ts tests/review-service.test.ts tests/profile-service.test.ts tests/profile-security.test.ts",
     "test:integration": "bun test tests/app-server.integration.test.ts",
     "test:browser": "bun tests/browser-smoke.mjs && bun tests/mobile-layout.test.mjs && bun tests/surfaces-browser.mjs",
-    "test:e2e": "bun tests/approval-e2e.mjs && bun tests/review-api-e2e.mjs"
+    "test:e2e": "bun tests/account-api.e2e.mjs && bun tests/approval-e2e.mjs && bun tests/review-api-e2e.mjs"
   },
   "dependencies": {
     "dompurify": "^3.3.1",

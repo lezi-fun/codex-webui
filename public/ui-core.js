@@ -1,5 +1,13 @@
 export const DEFAULT_TURN_PAGE_SIZE = 20;
 
+export function createLatestRequestGate() {
+  let generation = 0;
+  return {
+    next() { generation += 1; return generation; },
+    isCurrent(value) { return value === generation; },
+  };
+}
+
 export function createTurnWindow(turns, pageSize = DEFAULT_TURN_PAGE_SIZE, currentStart, loadMore = 0) {
   const total = Array.isArray(turns) ? turns.length : 0;
   const safePage = Math.max(1, pageSize);

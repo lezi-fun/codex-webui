@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { DEFAULT_TURN_PAGE_SIZE, createTurnWindow, selectModelState } from "../public/ui-core.js";
+import { DEFAULT_TURN_PAGE_SIZE, createLatestRequestGate, createTurnWindow, selectModelState } from "../public/ui-core.js";
 
 describe("conversation turn window", () => {
   test("uses a small default page for fast first paint", () => {
@@ -22,6 +22,16 @@ describe("conversation turn window", () => {
     expect(second.visible[0].id).toBe("turn-40");
     expect(second.visible.at(-1)?.id).toBe("turn-199");
     expect(second.hiddenCount).toBe(40);
+  });
+});
+
+describe("latest request gate", () => {
+  test("invalidates an older async response when a new request starts", () => {
+    const gate = createLatestRequestGate();
+    const oldRequest = gate.next();
+    const currentRequest = gate.next();
+    expect(gate.isCurrent(oldRequest)).toBe(false);
+    expect(gate.isCurrent(currentRequest)).toBe(true);
   });
 });
 
