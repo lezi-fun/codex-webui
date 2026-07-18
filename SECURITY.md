@@ -13,8 +13,10 @@ Do not publish exploitable details in a public issue. Use GitHub's private vulne
 Codex WebUI runs commands and edits files through the local Codex app-server. Treat it as a local developer tool, not as a hardened multi-tenant service.
 
 - Do not expose port `8899` directly to the public Internet.
-- Use a trusted LAN, VPN, or authenticated reverse proxy.
+- The default listener is `127.0.0.1`. Non-localhost access requires `CODEX_WEBUI_ACCESS_TOKEN`; once configured, Basic Auth (`codex` as the username) is required for every HTTP and WebSocket request, including localhost.
+- Browser WebSocket RPC is allowlisted and cannot invoke app-server filesystem, configuration, or account methods.
+- Static files are allowlisted, canonicalized, and symbolic links are never served.
+- Folder browsing canonicalizes paths and rejects symbolic links that escape the user's home directory.
+- Review Undo/Reapply accepts only server-owned app-server diff notifications. Client-supplied `cwd` and diff data, symbolic-link patches, `.git`, `.env`, and `node_modules` targets are rejected.
 - Review approval prompts before allowing commands or file changes.
-- Folder browsing is constrained to the current user's home directory.
-- Undo/Reapply only accepts the exact Git root configured by `CODEX_WEBUI_REVIEW_ROOT`.
 - Secrets must never be committed, included in screenshots, or pasted into Issues.

@@ -21,4 +21,4 @@ const blockedRpc=await new Promise((resolve,reject)=>{
 });
 result.blockedRpc=blockedRpc;
 console.log(JSON.stringify(result,null,2));
-if(response.status!==200||JSON.stringify(keys)!==JSON.stringify(expected)||!account.displayName||'email' in account||'imageUrl' in account||JSON.stringify(account).toLowerCase().includes('token')||(account.avatarUrl&&(!result.avatar?.status||!result.avatar.contentType?.startsWith('image/')||!result.avatar.length))||result.foreignHostStatus!==403||blockedRpc.type!=='rpc/error')process.exit(1);
+if(response.status!==200||JSON.stringify(keys)!==JSON.stringify(expected)||!account.displayName||'email' in account||'imageUrl' in account||JSON.stringify(account).toLowerCase().includes('token')||(account.avatarUrl&&(!result.avatar?.status||!result.avatar.contentType?.startsWith('image/')||!result.avatar.length))||result.foreignHostStatus!==401||blockedRpc.type!=='rpc/error')process.exit(1);

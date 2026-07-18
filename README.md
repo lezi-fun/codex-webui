@@ -30,7 +30,7 @@ Codex WebUI connects directly to `codex app-server --stdio` and exposes the loca
 - Codex-style sidebar account identity with display name, proxied avatar fallback, and plan
 - Long-thread windowing to avoid rendering thousands of turns at once
 - Responsive desktop and mobile layouts, including a full-screen mobile review drawer
-- LAN access through `0.0.0.0:8899`
+- Localhost-only by default; authenticated LAN access is opt-in
 
 ## Requirements
 
@@ -63,13 +63,7 @@ Open:
 http://127.0.0.1:8899
 ```
 
-The server also prints detected LAN addresses, for example:
-
-```text
-LAN: http://192.168.x.x:8899
-```
-
-Use the folder button in the composer or sidebar to select the project Codex should work in.
+The default bind address is localhost. Use the folder button in the composer or sidebar to select the project Codex should work in.
 
 ## Configuration
 
@@ -84,6 +78,7 @@ Bun does not automatically load every `.env` convention in all execution context
 ```bash
 export HOST=0.0.0.0
 export PORT=8899
+export CODEX_WEBUI_ACCESS_TOKEN="$(openssl rand -hex 32)"
 export CODEX_WEBUI_CWD="$HOME/projects/my-project"
 export CODEX_WEBUI_REVIEW_ROOT="$HOME/projects/my-project"
 bun run start
@@ -91,8 +86,9 @@ bun run start
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `HOST` | `0.0.0.0` | HTTP/WebSocket bind address |
+| `HOST` | `127.0.0.1` | HTTP/WebSocket bind address |
 | `PORT` | `8899` | HTTP/WebSocket port |
+| `CODEX_WEBUI_ACCESS_TOKEN` | unset | Enables Basic Auth for every HTTP/WebSocket request; required for non-localhost access, username `codex` |
 | `CODEX_WEBUI_CWD` | repository directory | Initial Codex working directory |
 | `CODEX_WEBUI_REVIEW_ROOT` | `CODEX_WEBUI_CWD` | Exact Git root allowed for Undo/Reapply |
 | `CODEX_HOME` | `~/.codex` | Codex state directory containing `auth.json` |
@@ -104,10 +100,12 @@ bun run start
 Codex WebUI can approve command execution and file changes on your machine. Treat it like a local developer tool with shell access.
 
 - Do **not** expose port `8899` directly to the public Internet.
-- Use a trusted LAN, VPN, or authenticated reverse proxy.
+- The default listener is `127.0.0.1`. Non-localhost HTTP and WebSocket requests require `CODEX_WEBUI_ACCESS_TOKEN`; use Basic Auth username `codex` and the token as the password.
+- Browser RPC uses an explicit allowlist and cannot invoke app-server `fs/*`, `config/*`, or account methods.
+- Static serving uses an asset allowlist and rejects symbolic links.
+- Filesystem browsing canonicalizes paths and rejects symlinks that escape the user's home directory.
+- Review Undo/Reapply uses server-owned app-server diffs, rejects client-supplied `cwd`/diff data, symbolic-link patches, and sensitive targets such as `.git`, `.env`, and `node_modules`.
 - Read approval prompts before allowing commands.
-- Filesystem browsing is restricted to the current user's home directory.
-- Review Undo/Reapply only accepts the configured exact Git root.
 - Account identity combines app-server `account/read` data with Codex's authenticated profile endpoint. It is available only through direct localhost access; LAN clients receive the neutral Settings fallback. Email and raw avatar URLs are not exposed, avatars use a same-origin allowlisted proxy, and `auth.json` tokens remain server-only.
 - Never paste credentials into issues, screenshots, or public logs.
 

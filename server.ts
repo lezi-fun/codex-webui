@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join, resolve, extname } from "node:path";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createServer } from "node:http";
@@ -6,6 +6,14 @@ import { networkInterfaces } from "node:os";
 import { WebSocketServer, WebSocket } from "ws";
 import { defaultBrowseRoots, isDirectory, listFolders, resolveBrowsePath } from "./folder-service.js";
 import { applyReviewPatch } from "./review-service.js";
+import { ReviewDiffStore, parseReviewPatchRequest } from "./review-state.js";
+import {
+  isAllowedBrowserRpcMethod,
+  isAuthorizedHttpRequest,
+  resolvePublicAsset,
+  resolveSafeRegularFile,
+  unauthorizedResponse,
+} from "./server-security.js";
 import {
   createAccountIdentityLoader,
   fetchProfileAvatar,
@@ -14,8 +22,10 @@ import {
   toPublicAccountIdentity,
 } from "./profile-service.js";
 
-const host = process.env.HOST || "0.0.0.0";
+const host = process.env.HOST || "127.0.0.1";
 const port = Number(process.env.PORT || 8899);
+const accessToken = process.env.CODEX_WEBUI_ACCESS_TOKEN || null;
+const localhostOnly = host === "127.0.0.1" || host === "::1" || host === "localhost";
 const publicDir = resolve(import.meta.dir, "public");
 const homeDir = process.env.HOME || process.cwd();
 const defaultCwd = resolve(process.env.CODEX_WEBUI_CWD || import.meta.dir);
@@ -23,6 +33,7 @@ const browseRoots = defaultBrowseRoots(homeDir);
 const reviewRoots = [resolve(process.env.CODEX_WEBUI_REVIEW_ROOT || defaultCwd)];
 const clients = new Set<WebSocket>();
 const pending = new Map<number, { resolve: (value: any) => void; reject: (error: Error) => void }>();
+const reviewDiffs = new ReviewDiffStore();
 let seq = 1;
 let codex: ChildProcessWithoutNullStreams | null = null;
 let stdoutBuffer = "";
@@ -59,6 +70,7 @@ function startCodex() {
   codex.on("exit", (code, signal) => {
     connected = false;
     accountLoader.invalidate();
+    reviewDiffs.clear();
     broadcast({ type: "bridge/status", status: "disconnected", code, signal });
     for (const item of pending.values()) item.reject(new Error("Codex app-server exited"));
     pending.clear();
@@ -117,6 +129,7 @@ function handleCodex(message: any) {
   }
   if (message.method) {
     if (message.method === "account/updated") accountLoader.invalidate();
+    if (message.method === "turn/diff/updated") reviewDiffs.record(message.params || {});
     broadcast({ type: "codex/notification", payload: message });
   }
 }
@@ -130,7 +143,7 @@ async function handleClient(client: WebSocket, message: any) {
   const id = message.id;
   try {
     if (message.type === "rpc") {
-      if (typeof message.method !== "string" || message.method.startsWith("account/")) throw new Error("Account RPC methods are not available to browser clients");
+      if (!isAllowedBrowserRpcMethod(message.method)) throw new Error("RPC method is not available to browser clients");
       const result = await request(message.method, message.params || {});
       client.send(JSON.stringify({ type: "rpc/result", id, result }));
       return;
@@ -155,7 +168,11 @@ const mime: Record<string, string> = {
 };
 
 const server = createServer(async (req, res) => {
-  const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+  const url = new URL(req.url || "/", "http://localhost");
+  if (!isAuthorizedHttpRequest(req, accessToken, localhostOnly)) {
+    unauthorizedResponse(res);
+    return;
+  }
   if (url.pathname === "/api/health") {
     res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
     res.end(JSON.stringify({ ok: true, codex: connected, version: "0.2.0" }));
@@ -167,7 +184,8 @@ const server = createServer(async (req, res) => {
     return;
   }
   if (url.pathname === "/api/account" || url.pathname === "/api/account/avatar") {
-    if (!isLocalAccountRequest(req.socket.remoteAddress, req.headers.host, req.headers["sec-fetch-site"] as string | undefined)) {
+    const proxied = Boolean(req.headers["x-forwarded-for"] || req.headers.forwarded || req.headers["x-real-ip"]);
+    if (!localhostOnly || proxied || !isLocalAccountRequest(req.socket.remoteAddress, req.headers.host, req.headers["sec-fetch-site"] as string | undefined)) {
       res.writeHead(403, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
       res.end(JSON.stringify({ error: "Account identity is available only on localhost" }));
       return;
@@ -229,41 +247,72 @@ const server = createServer(async (req, res) => {
       if (body.length > 2_000_000) req.destroy(new Error("Review patch payload too large"));
     });
     req.on("end", async () => {
+      let requestPayload: ReturnType<typeof parseReviewPatchRequest> | null = null;
+      let operationStarted = false;
+      let success = false;
       try {
         const payload = JSON.parse(body || "{}");
-        if (!payload.cwd || !payload.diff || !payload.action) throw new Error("Missing review patch parameters");
-        const result = await applyReviewPatch(payload, reviewRoots);
+        requestPayload = parseReviewPatchRequest(payload);
+        const stored = reviewDiffs.begin(requestPayload.threadId, requestPayload.turnId, requestPayload.action);
+        operationStarted = true;
+        const threadResult = await request("thread/read", { threadId: requestPayload.threadId, includeTurns: false });
+        const cwd = threadResult?.thread?.cwd;
+        if (typeof cwd !== "string" || !cwd) throw new Error("Thread working directory is unavailable");
+        const result = await applyReviewPatch({ cwd, diff: stored.diff, action: requestPayload.action }, reviewRoots);
+        success = true;
         res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
         res.end(JSON.stringify(result));
       } catch (error) {
         res.writeHead(400, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
         res.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }));
+      } finally {
+        if (operationStarted && requestPayload) reviewDiffs.finish(requestPayload.threadId, requestPayload.turnId, requestPayload.action, success);
       }
     });
     return;
   }
   if (url.pathname.startsWith("/vendor/katex/")) {
-    const relative = decodeURIComponent(url.pathname.slice("/vendor/katex/".length));
+    let relative;
+    try { relative = decodeURIComponent(url.pathname.slice("/vendor/katex/".length)); }
+    catch { res.writeHead(404, { "content-type": "text/plain; charset=utf-8" }); res.end("Not found"); return; }
     const katexDir = resolve(import.meta.dir, "node_modules/katex/dist");
-    const file = resolve(katexDir, relative);
-    if (!file.startsWith(katexDir) || !existsSync(file) || !statSync(file).isFile()) {
+    const file = resolveSafeRegularFile(katexDir, relative);
+    if (!file) {
       res.writeHead(404, { "content-type": "text/plain; charset=utf-8" }); res.end("Not found"); return;
     }
     res.writeHead(200, { "content-type": mime[extname(file)] || "application/octet-stream", "cache-control": "public, max-age=86400" });
     res.end(readFileSync(file));
     return;
   }
-  let pathname = decodeURIComponent(url.pathname);
-  if (pathname === "/") pathname = "/index.html";
-  const file = resolve(publicDir, "." + pathname);
-  if (!file.startsWith(publicDir) || !existsSync(file) || !statSync(file).isFile()) {
+  const file = resolvePublicAsset(url.pathname, publicDir);
+  if (!file) {
     res.writeHead(404, { "content-type": "text/plain; charset=utf-8" }); res.end("Not found"); return;
   }
   res.writeHead(200, { "content-type": mime[extname(file)] || "application/octet-stream", "cache-control": "no-store" });
   res.end(readFileSync(file));
 });
 
-const wss = new WebSocketServer({ server, path: "/ws" });
+const wss = new WebSocketServer({ noServer: true });
+server.on("upgrade", (req, socket, head) => {
+  let pathname = "";
+  try { pathname = new URL(req.url || "/", "http://localhost").pathname; }
+  catch { socket.destroy(); return; }
+  if (pathname !== "/ws" || !isAuthorizedHttpRequest(req, accessToken, localhostOnly)) {
+    const body = JSON.stringify({ error: "Authentication required" });
+    socket.end([
+      "HTTP/1.1 401 Unauthorized",
+      "Connection: close",
+      'WWW-Authenticate: Basic realm="Codex WebUI", charset="UTF-8"',
+      "Content-Type: application/json; charset=utf-8",
+      `Content-Length: ${Buffer.byteLength(body)}`,
+      "X-Content-Type-Options: nosniff",
+      "",
+      body,
+    ].join("\r\n"));
+    return;
+  }
+  wss.handleUpgrade(req, socket, head, client => wss.emit("connection", client, req));
+});
 wss.on("connection", (client) => {
   clients.add(client);
   client.send(JSON.stringify({ type: "bridge/status", status: connected ? "connected" : "connecting" }));
@@ -286,8 +335,11 @@ if (!frontendBuild.success) throw new Error(`Frontend build failed: ${frontendBu
 startCodex();
 server.listen(port, host, () => {
   console.log(`Codex WebUI listening on http://${host}:${port}`);
-  const addresses = Object.values(networkInterfaces()).flat().filter((entry): entry is NonNullable<typeof entry> => !!entry && entry.family === "IPv4" && !entry.internal);
-  for (const entry of addresses) console.log(`LAN: http://${entry.address}:${port}`);
+  if (!localhostOnly && !accessToken) console.warn("[codex-webui] Non-localhost requests are disabled until CODEX_WEBUI_ACCESS_TOKEN is configured");
+  if (!localhostOnly) {
+    const addresses = Object.values(networkInterfaces()).flat().filter((entry): entry is NonNullable<typeof entry> => !!entry && entry.family === "IPv4" && !entry.internal);
+    for (const entry of addresses) console.log(`LAN: http://${entry.address}:${port} (authentication required)`);
+  }
 });
 
 function shutdown() {
