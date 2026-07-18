@@ -27,6 +27,7 @@ Codex WebUI connects directly to `codex app-server --stdio` and exposes the loca
 - Unified and split diff review, word wrap, expand/collapse, Undo, and Reapply
 - Safe Markdown, GFM, fenced code blocks, links, and KaTeX rendering
 - Project-folder picker with restricted filesystem browsing
+- Codex-style sidebar account identity with display name, avatar fallback, email, and plan
 - Long-thread windowing to avoid rendering thousands of turns at once
 - Responsive desktop and mobile layouts, including a full-screen mobile review drawer
 - LAN access through `0.0.0.0:8899`
@@ -94,6 +95,8 @@ bun run start
 | `PORT` | `8899` | HTTP/WebSocket port |
 | `CODEX_WEBUI_CWD` | repository directory | Initial Codex working directory |
 | `CODEX_WEBUI_REVIEW_ROOT` | `CODEX_WEBUI_CWD` | Exact Git root allowed for Undo/Reapply |
+| `CODEX_HOME` | `~/.codex` | Codex state directory containing `auth.json` |
+| `CODEX_AUTH_PATH` | `$CODEX_HOME/auth.json` | Optional explicit Codex authentication file path |
 | `PLAYWRIGHT_EXECUTABLE_PATH` | auto-detected | Optional Chrome/Edge path for browser tests |
 
 ## Security model
@@ -105,6 +108,7 @@ Codex WebUI can approve command execution and file changes on your machine. Trea
 - Read approval prompts before allowing commands.
 - Filesystem browsing is restricted to the current user's home directory.
 - Review Undo/Reapply only accepts the configured exact Git root.
+- Account identity combines app-server `account/read` data with Codex's authenticated profile endpoint. `auth.json` is read only by the server; access and refresh tokens are never returned to the browser.
 - Never paste credentials into issues, screenshots, or public logs.
 
 See [SECURITY.md](./SECURITY.md) for the reporting policy.

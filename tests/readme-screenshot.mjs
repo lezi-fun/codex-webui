@@ -19,12 +19,13 @@ await page.evaluate(async()=>{
  document.querySelector('#projectPath').textContent='~/projects/demo-app';
  document.querySelector('#workspaceName').textContent='demo-app';
  document.querySelector('#modelLabel').textContent='Codex model';
+ api.renderAccount({type:'chatgpt',displayName:'Demo User',imageUrl:null,email:'demo@example.com',planType:'plus',initials:'DU'});
  document.querySelector('#threadList').innerHTML=`
-   <div class="thread-group">TODAY</div>
-   <button class="thread-item active"><div class="thread-name">Build a responsive settings panel</div><div class="thread-meta"><span class="repo">demo-app</span><time>now</time></div></button>
-   <button class="thread-item"><div class="thread-name">Add keyboard shortcuts</div><div class="thread-meta"><span class="repo">demo-app</span><time>18m</time></div></button>
-   <div class="thread-group">YESTERDAY</div>
-   <button class="thread-item"><div class="thread-name">Refactor the settings store</div><div class="thread-meta"><span class="repo">demo-app</span><time>1d</time></div></button>`;
+   <div class="thread-group">Today</div>
+   <button class="thread-item active"><span class="thread-name">Build a responsive settings panel</span><span class="thread-meta"><time>now</time></span></button>
+   <button class="thread-item"><span class="thread-name">Add keyboard shortcuts</span><span class="thread-meta"><time>18m</time></span></button>
+   <div class="thread-group">Yesterday</div>
+   <button class="thread-item"><span class="thread-name">Refactor the settings store</span><span class="thread-meta"><time>1d</time></span></button>`;
  document.querySelector('#conversation').innerHTML='<article class="turn user-turn"><div class="user-message">Add a responsive settings panel, run the checks, and show me the changes.</div></article>';
  api.notify('item/completed',{turnId:'readme-turn',item:{id:'readme-edit',type:'fileChange',status:'completed',changes:[{path:`${demo}/src/settings.ts`,additions:3,deletions:1}]}});
  api.notify('item/completed',{turnId:'readme-turn',item:{id:'readme-test',type:'commandExecution',status:'completed',command:'bun test',aggregatedOutput:'12 tests passed'}});

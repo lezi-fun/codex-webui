@@ -22,17 +22,25 @@
 
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-top">
-      <button class="new-task" id="newTask"><span class="icon-slot" data-icon="plus"></span><span>New task</span><kbd>⌘K</kbd></button>
-      <label class="search-box"><span class="icon-slot" data-icon="search"></span><input id="threadSearch" type="search" placeholder="Search tasks"></label>
-    </div>
-    <div class="thread-list" id="threadList"><div class="list-state">Connecting to Codex…</div></div>
-    <div class="sidebar-footer">
-      <button class="project-button" id="projectButton">
+      <button class="sidebar-row new-task" id="newTask"><span class="icon-slot" data-icon="plus"></span><span>New task</span><kbd>⌘K</kbd></button>
+      <label class="sidebar-row search-box"><span class="icon-slot" data-icon="search"></span><input id="threadSearch" type="search" placeholder="Search tasks"></label>
+      <button class="sidebar-row project-button" id="projectButton">
         <span class="project-glyph icon-slot" data-icon="folderOpen"></span>
         <span class="project-copy"><strong id="projectName">codex-webui</strong><span id="projectPath">~/projects/codex-webui</span></span>
         <span class="icon-slot chevron" data-icon="chevronDown"></span>
       </button>
-      <div class="connection-row"><span class="status-dot" id="statusDot"></span><span id="statusText">Connecting</span><span class="connection-spacer"></span><span id="threadSource">local</span></div>
+    </div>
+    <div class="thread-list" id="threadList"><div class="list-state">Connecting to Codex…</div></div>
+    <div class="sidebar-footer">
+      <div class="account-menu" id="accountMenu" hidden>
+        <div class="account-menu-identity"><strong id="accountMenuName">Settings</strong><span id="accountEmail"></span></div>
+        <div class="account-menu-meta"><span id="accountPlan"></span><span><span class="status-dot" id="statusDot"></span><span id="statusText">Connecting</span></span></div>
+      </div>
+      <button class="account-button" id="accountButton" type="button" aria-expanded="false" aria-controls="accountMenu">
+        <span class="account-avatar account-initials" id="accountAvatar">?</span>
+        <span id="accountName">Settings</span>
+      </button>
+      <span id="threadSource" hidden>local</span>
     </div>
   </aside>
 

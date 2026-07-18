@@ -5,7 +5,7 @@ import { buildApprovalModel, createReviewPreferences, parseUnifiedDiff, permissi
 import lottie from 'lottie-web/build/player/lottie_light.js';
 globalThis.__renderAssistantMarkdown = renderAssistantMarkdown;
 const $ = (s) => document.querySelector(s);
-const state = { ws:null, rpcId:1, pending:new Map(), threads:[], active:null, models:[], selectedModel:'', turnWindow:null, items:new Map(), activities:new Map(), changes:new Map(), requestCards:new Map(), motion:new Map(), turnDiffs:new Map(), activeReview:null, connected:false, config:{home:'',defaultCwd:''} };
+const state = { ws:null, rpcId:1, pending:new Map(), threads:[], active:null, models:[], selectedModel:'', turnWindow:null, items:new Map(), activities:new Map(), changes:new Map(), requestCards:new Map(), motion:new Map(), turnDiffs:new Map(), activeReview:null, account:null, connected:false, config:{home:'',defaultCwd:''} };
 let folderBrowse={path:'~',parent:null,selected:null};
 const reviewPreferences=createReviewPreferences(JSON.parse(localStorage.getItem('codex-webui-review-preferences')||'{}'));
 let reviewPatchState='undo';
@@ -49,11 +49,23 @@ function setStatus(kind,text){
   $('#statusDot').className='status-dot'+(kind==='connected'?' connected':kind==='error'?' error':'');
   $('#statusText').textContent=text||kind;
 }
-async function loadInitial(){
+async function loadInitial(refreshAccount=false){
+  loadAccount(refreshAccount);
   try{const [models,threads]=await Promise.all([rpc('model/list',{limit:50}),rpc('thread/list',{limit:50,sortKey:'recency_at',sortDirection:'desc'})]);
     state.models=models.data||[];renderModels();state.threads=threads.data||[];renderThreads();
   }catch(e){toast(e.message);}
 }
+async function loadAccount(refresh=false){
+  try{const response=await fetch(`/api/account${refresh?'?refresh=1':''}`,{cache:'no-store'}),account=await response.json();if(!response.ok)throw new Error(account.error||'Cannot load account');state.account=account;renderAccount(account)}catch{renderAccount({displayName:'Settings',imageUrl:null,email:null,planType:null,initials:'?'})}
+}
+function renderAccount(account){
+  const displayName=account?.displayName?.trim()||'Settings',initials=account?.initials?.trim()||'?';
+  $('#accountName').textContent=displayName;$('#accountMenuName').textContent=displayName;$('#accountEmail').textContent=account?.email||'';$('#accountEmail').hidden=!account?.email;
+  $('#accountPlan').textContent=account?.planType?`${account.planType.charAt(0).toUpperCase()}${account.planType.slice(1)} plan`:account?.type==='apiKey'?'API key':'';
+  const avatar=$('#accountAvatar'),imageUrl=typeof account?.imageUrl==='string'&&/^https:\/\//i.test(account.imageUrl)?account.imageUrl:'';avatar.dataset.imageUrl=imageUrl;avatar.className='account-avatar account-initials';avatar.textContent=initials;
+  if(imageUrl){const image=new Image;image.alt='';image.referrerPolicy='no-referrer';image.src=imageUrl;image.onload=()=>{if(avatar.dataset.imageUrl!==imageUrl)return;avatar.className='account-avatar';avatar.replaceChildren(image)};image.onerror=()=>{if(avatar.dataset.imageUrl!==imageUrl)return;avatar.className='account-avatar account-initials';avatar.textContent=initials}}
+}
+function toggleAccountMenu(force){const menu=$('#accountMenu'),open=force??menu.hidden;menu.hidden=!open;$('#accountButton').setAttribute('aria-expanded',String(open))}
 function renderModels(){
   const saved=localStorage.getItem('codex-webui-model');
   const selection=selectModelState(state.models,saved);state.selectedModel=selection.model;
@@ -74,12 +86,12 @@ function openFolderPicker(){const dialog=$('#folderDialog');folderBrowse.selecte
 function setWorkspace(path){const name=path.split('/').filter(Boolean).at(-1)||path;$('#projectPath').textContent=shortPath(path);$('#projectName').textContent=name;$('#workspaceName').textContent=name;localStorage.setItem('codex-webui-project',path)}
 function startNewTask(){state.active=null;state.turnWindow=null;state.items.clear();state.activities.clear();state.changes.clear();$('#threadTitle').textContent='New task';$('#threadPath').textContent=$('#projectPath').textContent;showEmpty();renderThreads();$('#prompt').focus()}
 function useSelectedFolder(){if(!folderBrowse.selected)return;setWorkspace(folderBrowse.selected);$('#folderDialog').close();startNewTask()}
-function dayGroup(ts){const d=new Date(ts*1000),n=new Date(),start=new Date(n.getFullYear(),n.getMonth(),n.getDate());const diff=(start-d)/86400000;if(diff<1)return'TODAY';if(diff<2)return'YESTERDAY';return'EARLIER'}
+function dayGroup(ts){const d=new Date(ts*1000),n=new Date(),start=new Date(n.getFullYear(),n.getMonth(),n.getDate());const diff=(start-d)/86400000;if(diff<1)return'Today';if(diff<2)return'Yesterday';return'Earlier'}
 function titleOf(t){return (t.name||t.preview||'Untitled task').replace(/\s+/g,' ').trim().slice(0,110)}
 function shortPath(path=''){const home=state.config.home;return home&&path.startsWith(home)?'~'+path.slice(home.length):path}
 function renderThreads(){
   const list=$('#threadList'),q=$('#threadSearch').value.trim().toLowerCase();list.innerHTML='';let group='';
-  for(const t of state.threads.filter(x=>!q||titleOf(x).toLowerCase().includes(q)||x.cwd?.toLowerCase().includes(q))){const g=dayGroup(t.recencyAt||t.updatedAt);if(g!==group){group=g;const h=document.createElement('div');h.className='thread-group';h.textContent=g;list.append(h)}const b=document.createElement('button');b.className='thread-item'+(state.active?.id===t.id?' active':'');b.dataset.id=t.id;b.innerHTML=`<div class="thread-name">${escapeHtml(titleOf(t))}</div><div class="thread-meta"><span class="repo">${escapeHtml(t.cwd?.split('/').pop()||t.source||'Codex')}</span><time>${formatAge(t.recencyAt||t.updatedAt)}</time></div>`;b.onclick=()=>openThread(t.id);list.append(b)}
+  for(const t of state.threads.filter(x=>!q||titleOf(x).toLowerCase().includes(q)||x.cwd?.toLowerCase().includes(q))){const g=dayGroup(t.recencyAt||t.updatedAt);if(g!==group){group=g;const h=document.createElement('div');h.className='thread-group';h.textContent=g;list.append(h)}const b=document.createElement('button');b.className='thread-item'+(state.active?.id===t.id?' active':'');b.dataset.id=t.id;b.title=[titleOf(t),shortPath(t.cwd)].filter(Boolean).join(' — ');b.innerHTML=`<span class="thread-name">${escapeHtml(titleOf(t))}</span><span class="thread-meta"><time>${formatAge(t.recencyAt||t.updatedAt)}</time></span>`;b.onclick=()=>openThread(t.id);list.append(b)}
   if(!list.children.length)list.innerHTML='<div class="list-state">No matching tasks</div>';
 }
 async function openThread(id){
@@ -122,7 +134,8 @@ function renderChanges(){const list=$('#changeList'),review=state.activeReview||
 async function applyActiveReviewPatch(){const review=state.activeReview||[...state.turnDiffs.values()].at(-1);if(!review?.raw||!state.active?.cwd)return;const action=reviewPatchState,button=$('#reviewPatch');button.disabled=true;button.innerHTML=codexIcon('loaderCircle','review-loading');try{const response=await fetch('/api/review/patch',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({cwd:state.active.cwd,diff:review.raw,action})}),result=await response.json();if(!response.ok)throw new Error(result.error||'Review patch failed');reviewPatchState=action==='undo'?'reapply':'undo';toast(action==='undo'?'Changes reverted':'Changes reapplied')}catch(error){toast(error.message)}finally{syncReviewControls(review)}}
 
 function onNotification(method,p){
-  if(method==='thread/started'){state.threads.unshift(p.thread);renderThreads()}
+  if(method==='account/updated')loadAccount(true);
+  else if(method==='thread/started'){state.threads.unshift(p.thread);renderThreads()}
   else if(method==='thread/name/updated'){const t=state.threads.find(x=>x.id===p.threadId);if(t)t.name=p.name;renderThreads();renderHeader()}
   else if(method==='turn/started'){$('#sendButton').dataset.turnId=p.turn?.id||'';$('#sendButton').classList.add('stop')}
   else if(method==='item/started'||method==='item/completed')upsertItem(p.item,p.turnId);
@@ -146,7 +159,7 @@ function formatAge(ts){const s=Math.max(0,Date.now()/1000-ts);if(s<60)return'now
 function escapeHtml(v=''){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function toast(text){const e=$('#toast');e.textContent=text;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),2200)}
 
-$('#changesTab').onclick=()=>{state.activeReview=[...state.turnDiffs.values()].at(-1)||state.activeReview;renderChanges()};$('#reviewMode').onclick=()=>{reviewPreferences.mode=reviewPreferences.mode==='unified'?'split':'unified';saveReviewPreferences();renderChanges()};$('#reviewWrap').onclick=()=>{reviewPreferences.wrap=!reviewPreferences.wrap;saveReviewPreferences();renderChanges()};$('#reviewExpand').onclick=()=>{reviewPreferences.expanded=!reviewPreferences.expanded;saveReviewPreferences();renderChanges()};$('#reviewPatch').onclick=applyActiveReviewPatch;$('#composer').addEventListener('submit',submitPrompt);$('#prompt').addEventListener('input',resizePrompt);$('#prompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('#composer').requestSubmit()}});$('#threadSearch').addEventListener('input',renderThreads);$('#modelButton').addEventListener('click',toggleModelMenu);$('#newTask').onclick=startNewTask;$('#projectButton').onclick=openFolderPicker;$('#workspaceButton').onclick=openFolderPicker;$('#folderGo').onclick=()=>loadFolders($('#folderPathInput').value);$('#folderPathInput').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();loadFolders(e.currentTarget.value)}};$('#folderUp').onclick=()=>folderBrowse.parent&&loadFolders(folderBrowse.parent);$('#folderConfirm').onclick=useSelectedFolder;$('#refreshButton').onclick=loadInitial;$('#toggleSidebar').onclick=()=>{if(innerWidth<720)$('#sidebar').classList.toggle('mobile-open');else document.body.classList.toggle('sidebar-hidden')};$('#closeChanges').onclick=()=>{document.body.classList.add('changes-hidden');$('#changesPanel').classList.remove('mobile-review-open')};document.addEventListener('click',e=>{if(!$('#modelPicker').contains(e.target))closeModelMenu()});document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModelMenu();if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();startNewTask()}});
-globalThis.__codexWebuiDebug={notify:onNotification,request:onServerRequest,state,renderChanges};
+$('#changesTab').onclick=()=>{state.activeReview=[...state.turnDiffs.values()].at(-1)||state.activeReview;renderChanges()};$('#reviewMode').onclick=()=>{reviewPreferences.mode=reviewPreferences.mode==='unified'?'split':'unified';saveReviewPreferences();renderChanges()};$('#reviewWrap').onclick=()=>{reviewPreferences.wrap=!reviewPreferences.wrap;saveReviewPreferences();renderChanges()};$('#reviewExpand').onclick=()=>{reviewPreferences.expanded=!reviewPreferences.expanded;saveReviewPreferences();renderChanges()};$('#reviewPatch').onclick=applyActiveReviewPatch;$('#composer').addEventListener('submit',submitPrompt);$('#prompt').addEventListener('input',resizePrompt);$('#prompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('#composer').requestSubmit()}});$('#threadSearch').addEventListener('input',renderThreads);$('#modelButton').addEventListener('click',toggleModelMenu);$('#newTask').onclick=startNewTask;$('#projectButton').onclick=openFolderPicker;$('#workspaceButton').onclick=openFolderPicker;$('#accountButton').onclick=e=>{e.stopPropagation();toggleAccountMenu()};$('#folderGo').onclick=()=>loadFolders($('#folderPathInput').value);$('#folderPathInput').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();loadFolders(e.currentTarget.value)}};$('#folderUp').onclick=()=>folderBrowse.parent&&loadFolders(folderBrowse.parent);$('#folderConfirm').onclick=useSelectedFolder;$('#refreshButton').onclick=()=>loadInitial(true);$('#toggleSidebar').onclick=()=>{if(innerWidth<720)$('#sidebar').classList.toggle('mobile-open');else document.body.classList.toggle('sidebar-hidden')};$('#closeChanges').onclick=()=>{document.body.classList.add('changes-hidden');$('#changesPanel').classList.remove('mobile-review-open')};document.addEventListener('click',e=>{if(!$('#modelPicker').contains(e.target))closeModelMenu();if(!$('#accountMenu').contains(e.target)&&!$('#accountButton').contains(e.target))toggleAccountMenu(false)});document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModelMenu();toggleAccountMenu(false)}if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();startNewTask()}});
+globalThis.__codexWebuiDebug={notify:onNotification,request:onServerRequest,state,renderChanges,renderAccount};
 async function boot(){const savedProject=localStorage.getItem('codex-webui-project');try{state.config=await fetch('/api/config').then(r=>r.json())}catch{}setWorkspace(savedProject||state.config.defaultCwd||'.');connect()}
 boot();

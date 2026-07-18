@@ -6,6 +6,7 @@ import { networkInterfaces } from "node:os";
 import { WebSocketServer, WebSocket } from "ws";
 import { defaultBrowseRoots, isDirectory, listFolders, resolveBrowsePath } from "./folder-service.js";
 import { applyReviewPatch } from "./review-service.js";
+import { resolveAccountIdentity } from "./profile-service.js";
 
 const host = process.env.HOST || "0.0.0.0";
 const port = Number(process.env.PORT || 8899);
@@ -20,6 +21,15 @@ let seq = 1;
 let codex: ChildProcessWithoutNullStreams | null = null;
 let stdoutBuffer = "";
 let connected = false;
+let accountCache: { expiresAt: number; value: Awaited<ReturnType<typeof resolveAccountIdentity>> } | null = null;
+
+async function getAccountIdentity(refresh = false) {
+  if (!refresh && accountCache && accountCache.expiresAt > Date.now()) return accountCache.value;
+  const account = await request("account/read", { refreshToken: refresh });
+  const value = await resolveAccountIdentity(account);
+  accountCache = { value, expiresAt: Date.now() + 5 * 60_000 };
+  return value;
+}
 
 function startCodex() {
   if (codex && codex.exitCode === null) return;
@@ -47,6 +57,7 @@ function startCodex() {
   codex.stderr.on("data", (data) => console.error("[codex app-server]", String(data).trimEnd()));
   codex.on("exit", (code, signal) => {
     connected = false;
+    accountCache = null;
     broadcast({ type: "bridge/status", status: "disconnected", code, signal });
     for (const item of pending.values()) item.reject(new Error("Codex app-server exited"));
     pending.clear();
@@ -103,7 +114,10 @@ function handleCodex(message: any) {
     broadcast({ type: "codex/request", payload: message });
     return;
   }
-  if (message.method) broadcast({ type: "codex/notification", payload: message });
+  if (message.method) {
+    if (message.method === "account/updated") accountCache = null;
+    broadcast({ type: "codex/notification", payload: message });
+  }
 }
 
 function broadcast(data: any) {
@@ -138,7 +152,7 @@ const mime: Record<string, string> = {
   ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon",
 };
 
-const server = createServer((req, res) => {
+const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
   if (url.pathname === "/api/health") {
     res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
@@ -148,6 +162,18 @@ const server = createServer((req, res) => {
   if (url.pathname === "/api/config") {
     res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
     res.end(JSON.stringify({ home: homeDir, defaultCwd, reviewRoot: reviewRoots[0] }));
+    return;
+  }
+  if (url.pathname === "/api/account") {
+    try {
+      const account = await getAccountIdentity(url.searchParams.get("refresh") === "1");
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+      res.end(JSON.stringify(account));
+    } catch (error) {
+      console.warn("[codex-webui] account request failed:", error instanceof Error ? error.message : String(error));
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+      res.end(JSON.stringify(await resolveAccountIdentity({ account: null, requiresOpenaiAuth: true })));
+    }
     return;
   }
   if (url.pathname === "/api/folders") {
