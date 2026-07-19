@@ -62,6 +62,7 @@
         <div class="composer-footer">
           <div class="composer-left">
             <button type="button" class="composer-circle-button add-control" data-composer-control="add" title="Attach files and folders" aria-label="Attach files and folders"><span class="icon-slot" data-icon="plus"></span></button>
+            <button type="button" class="composer-text-button composer-project-control" id="composerProjectButton" data-composer-control="project" aria-label="Project"><span class="icon-slot" data-icon="folderOpen"></span><span id="composerProjectLabel">codex-webui</span><span class="icon-slot chevron" data-icon="chevronDown"></span></button>
             <button type="button" class="composer-text-button approval-control" id="modeButton" data-composer-control="approval" title="Approval policy"><span class="icon-slot" data-icon="shield"></span><span class="control-label">Request approval</span></button>
             <div class="model-picker composer-model-control" id="modelPicker" data-composer-control="model">
               <button type="button" class="composer-text-button model-trigger" id="modelButton" data-codex-intelligence-trigger aria-haspopup="menu" aria-expanded="false"><span id="modelLabel">Loading models…</span><span id="effortLabel">Medium</span><span class="icon-slot chevron" data-icon="chevronDown"></span></button>
@@ -149,7 +150,8 @@
 </div>
 <dialog class="folder-dialog" id="folderDialog">
   <form method="dialog" class="folder-card">
-    <div class="folder-head"><div><strong>Choose project folder</strong><span>Codex will use this as the working directory.</span></div><button class="icon-button" value="cancel" aria-label="Close"><span class="icon-slot" data-icon="x"></span></button></div>
+    <div class="folder-head"><div><strong>Project</strong><span>Choose where new tasks should work.</span></div><button class="icon-button" value="cancel" aria-label="Close"><span class="icon-slot" data-icon="x"></span></button></div>
+    <button type="button" class="projectless-option" id="projectlessOption"><span class="icon-slot" data-icon="messageSquare"></span><span><strong>None</strong><small>Don't work in a project</small></span><span class="projectless-check icon-slot" data-icon="check"></span></button>
     <div class="folder-path-row"><button type="button" class="icon-button" id="folderUp" title="Parent folder"><span class="icon-slot" data-icon="arrowUp"></span></button><input id="folderPathInput" spellcheck="false" autocomplete="off"><button type="button" class="folder-go" id="folderGo">Go</button></div>
     <div class="folder-list" id="folderList"><div class="list-state">Loading folders…</div></div>
     <div class="folder-actions"><span id="folderSelection">No folder selected</span><button value="cancel" class="folder-cancel">Cancel</button><button type="button" class="folder-confirm" id="folderConfirm" disabled>Use this folder</button></div>

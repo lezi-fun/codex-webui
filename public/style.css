@@ -307,6 +307,9 @@ body{background:var(--app-main);color:var(--app-text)}
 .composer-text-button .icon-slot{width:15px;height:15px;min-width:15px}
 .composer-text-button .icon-slot>svg{width:14px;height:14px}
 .approval-control{padding-left:6px}
+.composer-project-control{max-width:190px;padding:0 5px}
+.composer-project-control[hidden]{display:none}
+.composer-project-control #composerProjectLabel{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--app-text-secondary)}
 .composer-model-control{min-width:0}
 .model-trigger{min-width:0;max-width:230px;padding:0 5px;gap:6px;border:0;background:transparent;font-size:13px}
 .model-trigger:hover,.model-trigger[aria-expanded=true]{background:color-mix(in srgb,var(--app-text) 4%,transparent);color:var(--app-text-secondary)}
@@ -336,6 +339,18 @@ body{background:var(--app-main);color:var(--app-text)}
 .model-option strong{font-size:13px;font-weight:400}
 .model-option small{display:none}
 .model-option .model-check{width:16px;height:16px;margin-left:auto;color:var(--app-text-secondary)}
+.projectless-option{display:flex;align-items:center;gap:10px;margin:8px 10px 2px;padding:8px 10px;border-radius:8px;color:var(--app-text);text-align:left}
+.projectless-option:hover,.projectless-option.selected{background:var(--app-hover)}
+.projectless-option>.icon-slot{width:16px;height:16px;color:var(--app-text-secondary)}
+.projectless-option>span:nth-child(2){min-width:0;display:flex;flex:1;flex-direction:column}
+.projectless-option strong{font-size:13px;font-weight:500}
+.projectless-option small{font-size:11px;line-height:16px;color:var(--app-text-tertiary)}
+.projectless-option .projectless-check{visibility:hidden;color:var(--app-text-secondary)}
+.projectless-option.selected .projectless-check{visibility:visible}
+.folder-dialog{width:min(520px,calc(100vw - 28px));max-height:min(560px,calc(100vh - 28px))}
+.folder-dialog::backdrop{backdrop-filter:blur(1.5px)}
+.folder-card{min-height:360px;max-height:min(560px,calc(100vh - 28px))}
+#folderGo{border:1px solid var(--app-border-default);background:var(--app-fog);color:var(--app-text)}
 .dictation-control{border:0}
 .send-button{width:32px;height:32px;flex:0 0 32px;border-radius:50%;margin-left:1px;background:var(--app-text);color:var(--app-main)}
 .send-button:hover{filter:brightness(.9)}
@@ -343,6 +358,8 @@ body{background:var(--app-main);color:var(--app-text)}
 @media(max-width:720px){
   .composer textarea{min-height:62px}
   .composer-footer{overflow:hidden}
+  .composer-project-control{max-width:128px}
+  .composer-project-control #composerProjectLabel{max-width:74px}
   .model-trigger{max-width:150px}
   .model-trigger #modelLabel{max-width:78px}
 }
@@ -350,6 +367,9 @@ body{background:var(--app-main);color:var(--app-text)}
   .composer-dock{padding-top:4px}
   .approval-control .control-label{display:none}
   .approval-control{width:28px;padding:0;justify-content:center}
+  .composer-project-control{max-width:88px}
+  .composer-project-control>.icon-slot:first-child{display:none}
+  .composer-project-control #composerProjectLabel{max-width:54px}
   .model-trigger{max-width:118px;padding-inline:5px}
   .model-trigger #modelLabel{max-width:54px}
   .composer-left{min-width:0;flex:1}

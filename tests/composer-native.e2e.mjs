@@ -46,12 +46,19 @@ const modelSubmenu=await page.evaluate(()=>({
   rows:[...document.querySelectorAll('#modelMenu .model-option')].map(node=>node.textContent.replace(/\s+/g,' ').trim()),
   back:Boolean(document.querySelector('#modelMenuBack')),
 }));
+await page.click('#modelMenu .model-option[data-model="gpt-5.6-luna"]');
+await page.click('#modelButton');
+const lunaEfforts=await page.locator('#modelMenu .model-effort-row').allTextContents();
+await page.click('#modelSubmenuButton');
+await page.click('#modelMenu .model-option[data-model="gpt-5.6-sol"]');
+await page.click('#modelButton');
+const solEfforts=await page.locator('#modelMenu .model-effort-row').allTextContents();
 await page.keyboard.press('Escape');
 await page.screenshot({path:artifact('composer-native.png'),fullPage:false});
-console.log(JSON.stringify({home,modelMain,effortSelection,modelSubmenu,errors},null,2));
+console.log(JSON.stringify({home,modelMain,effortSelection,modelSubmenu,lunaEfforts,solEfforts,errors},null,2));
 await browser.close();
 
-const expected=['add','approval','model','dictation','send'];
+const expected=['add','project','approval','model','dictation','send'];
 if(errors.length
   ||!/^What can I help with in .+\?$/.test(home.heading||'')
   ||home.placeholder!=='Do anything'
@@ -70,5 +77,8 @@ if(errors.length
   ||modelSubmenu.title!=='Model'
   ||modelSubmenu.rows.length<1
   ||!modelSubmenu.back
+  ||lunaEfforts.includes('Ultra')
+  ||!lunaEfforts.includes('Max')
+  ||!solEfforts.includes('Ultra')
   ||parseFloat(home.composer.borderRadius)<20
   ||Math.abs(home.send.width-home.send.height)>.5)process.exit(1);

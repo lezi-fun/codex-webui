@@ -20,6 +20,7 @@ await page.evaluate(async()=>{
  document.querySelector('#modelLabel').textContent='5.5';
  document.querySelector('#effortLabel').textContent='Medium';
  document.querySelector('#prompt').placeholder='Ask for follow-up changes';
+ document.querySelector('#composerProjectButton').hidden=true;
  api.renderAccount({type:'chatgpt',displayName:'Demo User',avatarUrl:null,planType:'plus',initials:'DU'});
  document.querySelector('#threadList').innerHTML=`
    <div class="thread-group">Today</div>

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { DEFAULT_TURN_PAGE_SIZE, applyComposerSuggestion, createLatestRequestGate, createTurnWindow, getComposerAutocomplete, selectModelState } from "../public/ui-core.js";
+import { DEFAULT_TURN_PAGE_SIZE, applyComposerSuggestion, createLatestRequestGate, createTurnWindow, getComposerAutocomplete, resolveComposerPlaceholder, selectModelState } from "../public/ui-core.js";
 
 describe("conversation turn window", () => {
   test("uses a small default page for fast first paint", () => {
@@ -49,6 +49,20 @@ describe("model selection", () => {
       { model: "gpt-5.5", isDefault: true, defaultReasoningEffort: "medium", supportedReasoningEfforts: [{ reasoningEffort: "medium" }] },
     ];
     expect(selectModelState(models, "removed-model").model).toBe("gpt-5.5");
+  });
+});
+
+describe("composer placeholder", () => {
+  test("matches the native state priority and follow-up variants", () => {
+    expect(resolveComposerPlaceholder({ isGoalModeActive: true, isPlanModeActive: true })).toBe("Describe your goal, define measurable outcomes for best results");
+    expect(resolveComposerPlaceholder({ isPlanModeActive: true })).toBe("Describe your task to generate a plan...");
+    expect(resolveComposerPlaceholder({ placeholderText: "Waiting for worktree setup…" })).toBe("Waiting for worktree setup…");
+    expect(resolveComposerPlaceholder({ followUpType: "local", composerMode: "local" })).toBe("Ask for follow-up changes");
+    expect(resolveComposerPlaceholder({ followUpType: "local", composerMode: "local", isBackgroundSubagentsPanelVisible: true })).toBe("Ask for follow up changes or @ to tag an agent");
+    expect(resolveComposerPlaceholder({ followUpType: "cloud", composerMode: "local" })).toBe("Create a new local task that references this cloud task");
+    expect(resolveComposerPlaceholder({ followUpType: "cloud", composerMode: "cloud", cloudStartingState: "working-tree" })).toBe("Create a new cloud task that includes your current code and will reference this task");
+    expect(resolveComposerPlaceholder({ composerMode: "cloud" })).toBe("Ask Codex to do anything in the cloud");
+    expect(resolveComposerPlaceholder({ isHome: true, composerMode: "local" })).toBe("Do anything");
   });
 });
 

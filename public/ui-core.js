@@ -29,6 +29,36 @@ export function selectModelState(models, requestedModel) {
   return { model: selected.model, effort, efforts: efforts.length ? efforts : [effort] };
 }
 
+export function resolveComposerPlaceholder({
+  followUpType,
+  composerMode = "local",
+  cloudStartingState,
+  isBackgroundSubagentsPanelVisible = false,
+  isGoalModeActive = false,
+  isPlanModeActive = false,
+  placeholderText,
+  isHome = false,
+} = {}) {
+  if (isGoalModeActive) return "Describe your goal, define measurable outcomes for best results";
+  if (isPlanModeActive) return "Describe your task to generate a plan...";
+  if (placeholderText != null) return placeholderText;
+  if (followUpType === "cloud") {
+    if (composerMode === "local") return "Create a new local task that references this cloud task";
+    if (cloudStartingState === "working-tree") return "Create a new cloud task that includes your current code and will reference this task";
+    return "Follow-up to this cloud task";
+  }
+  if (followUpType === "local") {
+    if (composerMode === "cloud") return "Follow-up in a new cloud task";
+    return isBackgroundSubagentsPanelVisible
+      ? "Ask for follow up changes or @ to tag an agent"
+      : "Ask for follow-up changes";
+  }
+  if (isHome && composerMode === "local") return "Do anything";
+  return composerMode === "cloud"
+    ? "Ask Codex to do anything in the cloud"
+    : "Ask ChatGPT anything. @ to use plugins or mention files";
+}
+
 export function getComposerAutocomplete(text, cursor = text.length) {
   const value = String(text || "");
   const end = Math.max(0, Math.min(Number.isFinite(cursor) ? cursor : value.length, value.length));
