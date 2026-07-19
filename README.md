@@ -29,8 +29,9 @@ Codex WebUI connects directly to `codex app-server --stdio` and exposes the loca
 - Project-folder picker with restricted filesystem browsing
 - Codex-style sidebar account identity with display name, same-origin avatar fallback, and plan
 - Codex Desktop-style 46px header with separate Bottom Panel, Summary, and Task Side Panel controls; the Bottom Panel opens its native-style New tab launcher
+- Real Bottom Panel PTY terminal powered by xterm.js, with 256-color ANSI output, terminal resize, and interactive Vim/control-key support
 - Collapsed-by-default Summary panel matching the native Environment, Scheduled, Computer Use, Plan, Side tasks, and Sources sections; app-server data is shown when available and native-store-only sections use explicit unavailable or empty states instead of fabricated content
-- Collapsed-by-default Task Side Panel mirroring the native New tab launcher: Review opens the real diff, Files links to the restricted project picker, and native-bridge-only Terminal, Browser, and Side task entries show an explicit availability notice instead of a simulated tool
+- Collapsed-by-default Task Side Panel mirroring the native New tab launcher: Review opens the real diff, Files links to the restricted project picker, and its native-bridge-only Terminal, Browser, and Side task entries show an explicit availability notice instead of a simulated tool
 - Light and dark surfaces driven by shared Codex-style color tokens, including the monochrome transparent Codex Knot
 - Windowed long conversations instead of rendering thousands of turns at once
 - Responsive desktop and mobile layouts with full-screen Summary and Task Side Panel drawers on phones
@@ -39,6 +40,7 @@ Codex WebUI connects directly to `codex app-server --stdio` and exposes the loca
 ## Requirements
 
 - [Bun](https://bun.sh/) 1.3 or newer
+- Node.js 20 or newer, used by the native PTY worker
 - [OpenAI Codex CLI](https://www.npmjs.com/package/@openai/codex), installed and authenticated
 - Git, for Review Undo/Reapply
 - macOS or Linux recommended; Windows has not been fully tested
@@ -133,7 +135,7 @@ Review data is driven by `turn/diff/updated`. Unified diffs are parsed into file
 
 Undo/Reapply is deliberately restricted to the configured repository root.
 
-The shell mirrors Codex Desktop's separate Bottom Panel, Summary, and Task Side Panel controls. The app-server bridge currently provides the real Review flow and restricted local project selection. Native Desktop-only Terminal, embedded Browser, and Side task tabs remain visible for structural parity but show a clear unavailable message instead of simulating those capabilities.
+The shell mirrors Codex Desktop's separate Bottom Panel, Summary, and Task Side Panel controls. The Bottom Panel provides a real authenticated local PTY terminal, while the app-server bridge provides the Review flow and restricted local project selection. Native Desktop-only Task Side Panel Terminal, embedded Browser, and Side task tabs remain visible for structural parity but show a clear unavailable message instead of simulating those capabilities.
 
 ## Architecture
 
@@ -141,6 +143,8 @@ The shell mirrors Codex Desktop's separate Bottom Panel, Summary, and Task Side 
 flowchart LR
     Browser[Browser UI] <-->|WebSocket JSON-RPC| Server[Bun HTTP + WS server]
     Server <-->|stdio JSON-RPC| Codex[codex app-server]
+    Browser <-->|Authenticated terminal WebSocket| PTY[Node PTY worker]
+    PTY <-->|xterm-256color| Shell[Local login shell]
     Browser -->|Folder API| Server
     Browser -->|Review patch API| Server
     Server -->|git apply / reverse| Repo[Local Git repository]

@@ -143,6 +143,7 @@ body{background:var(--app-main);color:var(--app-text)}
 .sidebar{grid-column:1;grid-row:2/4;border-right:1px solid var(--app-border);background:var(--app-sidebar)}
 .conversation-shell{grid-column:2;grid-row:2;background:var(--app-main)}
 .conversation,.composer-dock{background:var(--app-main)}
+.composer-dock{border-top:0}
 .codex-interface-mark{display:inline-grid;place-items:center;color:currentColor;line-height:0}
 .codex-interface-mark svg{width:100%;height:100%;fill:currentColor;stroke:none}
 .window-codex-mark{width:20px;height:20px;color:var(--app-text-secondary)}
@@ -243,6 +244,10 @@ body{background:var(--app-main);color:var(--app-text)}
 .bottom-panel-launcher button{min-width:0;width:100%;height:36px;display:flex;align-items:center;justify-content:center;gap:7px;border-radius:7px;background:var(--app-fog);color:var(--app-text-secondary)}
 .bottom-panel-launcher button:hover{background:var(--app-hover);color:var(--app-text)}
 .bottom-panel-launcher[hidden],.bottom-panel-utility[hidden]{display:none}
+.terminal-host{min-height:0;flex:1;padding:6px 10px;overflow:hidden;background:var(--app-main)}
+.terminal-host[hidden]{display:none}
+.terminal-host .xterm{height:100%}
+.terminal-host .xterm-viewport{scrollbar-width:thin;scrollbar-color:var(--app-border-default) transparent}
 .bottom-panel-utility{min-height:0;flex:1;display:flex;align-items:center;justify-content:center;gap:12px;padding:14px;color:var(--app-text-secondary)}
 .bottom-panel-utility>.icon-slot{width:24px;height:24px;color:var(--app-text-secondary)}
 .bottom-panel-utility h2{font-size:13px;font-weight:500;color:var(--app-text)}

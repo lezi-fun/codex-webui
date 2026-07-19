@@ -7,6 +7,7 @@
 <title>Codex WebUI</title>
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/vendor/katex/katex.min.css">
+<link rel="stylesheet" href="/vendor/xterm/xterm.css">
 <script src="/app.bundle.js" type="module"></script>
 </head>
 <body>
@@ -144,6 +145,7 @@
   <section class="bottom-panel" id="bottomPanel" aria-label="Bottom panel" hidden>
     <div class="bottom-panel-tabs"><button class="bottom-panel-tab active" id="bottomPanelTab" type="button">New tab</button><button class="icon-button small" id="closeBottomPanel" type="button" title="Close bottom panel"><span class="icon-slot" data-icon="x"></span></button></div>
     <div class="bottom-panel-launcher" id="bottomPanelLauncher"><button type="button" data-bottom-panel-action="terminal"><span class="icon-slot" data-icon="terminal"></span><span>Terminal</span></button><button type="button" data-bottom-panel-action="browser"><span class="icon-slot" data-icon="globe"></span><span>Browser</span></button><button type="button" data-bottom-panel-action="files"><span class="icon-slot" data-icon="folderOpen"></span><span>Files</span></button></div>
+    <div class="terminal-host" id="terminalHost" data-connected="false" hidden></div>
     <div class="bottom-panel-utility" id="bottomPanelUtility" hidden><span class="icon-slot" id="bottomPanelIcon"></span><div><h2 id="bottomPanelUtilityTitle"></h2><p id="bottomPanelDescription"></p></div><button id="bottomPanelAction" type="button" hidden></button></div>
   </section>
 </div>

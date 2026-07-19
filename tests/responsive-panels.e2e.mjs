@@ -29,7 +29,8 @@ for(const width of [320,360]){
   await page.click('#bottomPanelTab');
   const launcher=await page.evaluate(()=>{const panel=document.querySelector('#bottomPanel').getBoundingClientRect(),buttons=[...document.querySelectorAll('[data-bottom-panel-action]')].map(node=>node.getBoundingClientRect().toJSON());return {title:document.querySelector('#bottomPanelTab').textContent.trim(),visible:!document.querySelector('#bottomPanelLauncher').hidden,buttonsInside:buttons.every(rect=>rect.left>=panel.left&&rect.right<=panel.right)}});
   await page.click('[data-bottom-panel-action="terminal"]');
-  const terminal=await page.evaluate(()=>({title:document.querySelector('#bottomPanelTab').textContent.trim(),utilityVisible:!document.querySelector('#bottomPanelUtility').hidden}));
+  await page.waitForFunction(()=>document.querySelector('#terminalHost')?.dataset.connected==='true');
+  const terminal=await page.evaluate(()=>({title:document.querySelector('#bottomPanelTab').textContent.trim(),utilityVisible:!document.querySelector('#bottomPanelUtility').hidden,visible:!document.querySelector('#terminalHost').hidden,connected:document.querySelector('#terminalHost').dataset.connected,xterm:Boolean(document.querySelector('#terminalHost .xterm'))}));
   const result={...bottom,launcher,terminal};
   results.push(result);
   await page.close();
@@ -57,7 +58,7 @@ const sync=results.find(result=>result.breakpointSync)?.breakpointSync;
 const invalidPanel = results.some(result => {
   if (result.scrollWidth > result.width) return true;
   if ('ariaModal' in result && (result.ariaModal !== 'true' || !result.conversationInert || result.activeId !== 'closeSidePanel')) return true;
-  if ('title' in result && (result.title !== 'New tab' || result.utilityVisible || result.launcher.title !== 'New tab' || !result.launcher.visible || !result.launcher.buttonsInside || result.terminal.title !== 'Terminal' || !result.terminal.utilityVisible)) return true;
+  if ('title' in result && (result.title !== 'New tab' || result.utilityVisible || result.launcher.title !== 'New tab' || !result.launcher.visible || !result.launcher.buttonsInside || result.terminal.title !== 'Terminal' || result.terminal.utilityVisible || !result.terminal.visible || result.terminal.connected !== 'true' || !result.terminal.xterm)) return true;
   return false;
 });
 if(invalidPanel||!sync?.overlay.conversationInert||sync.overlay.modal!=='true'||sync.docked.conversationInert||sync.docked.modal!=='false'||!sync.overlayAgain.conversationInert||sync.overlayAgain.modal!=='true'||sync.overlayAgain.activeId!=='closeSidePanel')process.exit(1);

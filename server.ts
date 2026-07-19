@@ -7,6 +7,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { defaultBrowseRoots, isDirectory, listFolders, resolveBrowsePath } from "./folder-service.js";
 import { applyReviewPatch } from "./review-service.js";
 import { ReviewDiffStore, parseReviewPatchRequest } from "./review-state.js";
+import { createTerminalSession, normalizeTerminalResize, resolveTerminalCwd } from "./terminal-service.js";
 import {
   isAllowedBrowserRpcMethod,
   isAuthorizedHttpRequest,
@@ -32,6 +33,7 @@ const defaultCwd = resolve(process.env.CODEX_WEBUI_CWD || import.meta.dir);
 const browseRoots = defaultBrowseRoots(homeDir);
 const reviewRoots = [resolve(process.env.CODEX_WEBUI_REVIEW_ROOT || defaultCwd)];
 const clients = new Set<WebSocket>();
+const terminalSessions = new Map<WebSocket, ReturnType<typeof createTerminalSession>>();
 const pending = new Map<number, { resolve: (value: any) => void; reject: (error: Error) => void }>();
 const reviewDiffs = new ReviewDiffStore();
 let seq = 1;
@@ -306,6 +308,16 @@ const server = createServer(async (req, res) => {
     res.end(readFileSync(file));
     return;
   }
+  if (url.pathname === "/vendor/xterm/xterm.css") {
+    const xtermDir = resolve(import.meta.dir, "node_modules/@xterm/xterm/css");
+    const file = resolveSafeRegularFile(xtermDir, "xterm.css");
+    if (!file) {
+      res.writeHead(404, { "content-type": "text/plain; charset=utf-8" }); res.end("Not found"); return;
+    }
+    res.writeHead(200, { "content-type": "text/css; charset=utf-8", "cache-control": "public, max-age=86400" });
+    res.end(readFileSync(file));
+    return;
+  }
   const file = resolvePublicAsset(url.pathname, publicDir);
   if (!file) {
     res.writeHead(404, { "content-type": "text/plain; charset=utf-8" }); res.end("Not found"); return;
@@ -315,11 +327,12 @@ const server = createServer(async (req, res) => {
 });
 
 const wss = new WebSocketServer({ noServer: true });
+const terminalWss = new WebSocketServer({ noServer: true });
 server.on("upgrade", (req, socket, head) => {
   let pathname = "";
   try { pathname = new URL(req.url || "/", "http://localhost").pathname; }
   catch { socket.destroy(); return; }
-  if (pathname !== "/ws" || !isAuthorizedHttpRequest(req, accessToken, localhostOnly)) {
+  if ((pathname !== "/ws" && pathname !== "/terminal") || !isAuthorizedHttpRequest(req, accessToken, localhostOnly)) {
     const body = JSON.stringify({ error: "Authentication required" });
     socket.end([
       "HTTP/1.1 401 Unauthorized",
@@ -333,7 +346,8 @@ server.on("upgrade", (req, socket, head) => {
     ].join("\r\n"));
     return;
   }
-  wss.handleUpgrade(req, socket, head, client => wss.emit("connection", client, req));
+  const target = pathname === "/terminal" ? terminalWss : wss;
+  target.handleUpgrade(req, socket, head, client => target.emit("connection", client, req));
 });
 wss.on("connection", (client) => {
   clients.add(client);
@@ -343,6 +357,47 @@ wss.on("connection", (client) => {
     catch (error) { client.send(JSON.stringify({ type: "rpc/error", error: String(error) })); }
   });
   client.on("close", () => clients.delete(client));
+});
+terminalWss.on("connection", (client, req) => {
+  let terminal: ReturnType<typeof createTerminalSession> | null = null;
+  try {
+    const url = new URL(req.url || "/terminal", "http://localhost");
+    const cwd = resolveTerminalCwd(url.searchParams.get("cwd"), browseRoots, defaultCwd);
+    terminal = createTerminalSession({
+      cwd,
+      cols: 100,
+      rows: 24,
+      onData: data => { if (client.readyState === WebSocket.OPEN) client.send(data); },
+      onExit: event => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(`\r\n[Process exited ${event.exitCode}]\r\n`);
+          client.close(1000, "Terminal exited");
+        }
+      },
+    });
+    terminalSessions.set(client, terminal);
+  } catch (error) {
+    console.error("[codex-webui] terminal failed", error);
+    client.close(1011, "Terminal unavailable");
+    return;
+  }
+  client.on("message", (raw, isBinary) => {
+    if (!terminal || raw.byteLength > 1_000_000) return;
+    if (isBinary) {
+      terminal.write(Buffer.from(raw as Buffer).toString("utf8"));
+      return;
+    }
+    try {
+      const resize = normalizeTerminalResize(JSON.parse(String(raw)));
+      if (resize) terminal.resize(resize.cols, resize.rows);
+    } catch { /* Terminal input is sent as binary; ignore malformed control frames. */ }
+  });
+  client.on("close", () => {
+    terminalSessions.delete(client);
+    terminal?.kill();
+    terminal = null;
+  });
+  client.on("error", () => client.close());
 });
 
 const frontendBuild = await Bun.build({
@@ -375,6 +430,9 @@ function shutdown() {
   for (const client of clients) client.terminate();
   clients.clear();
   wss.close();
+  for (const [client, terminal] of terminalSessions) { terminal.kill(); client.terminate(); }
+  terminalSessions.clear();
+  terminalWss.close();
   terminateCodex();
   server.close(() => { httpClosed = true; maybeFinishShutdown(); });
   server.closeAllConnections?.();

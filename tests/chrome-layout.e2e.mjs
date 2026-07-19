@@ -86,12 +86,15 @@ const bottomLauncher=await page.evaluate(()=>({
   utilityVisible:!document.querySelector('#bottomPanelUtility')?.hidden,
 }));
 await page.click('[data-bottom-panel-action="terminal"]');
+await page.waitForFunction(()=>document.querySelector('#terminalHost')?.dataset.connected==='true');
 const bottom=await page.evaluate(()=>({
   pressed:document.querySelector('#toggleBottomPanel').getAttribute('aria-pressed'),
   title:document.querySelector('#bottomPanelTab')?.textContent?.trim(),
   launcherHidden:document.querySelector('#bottomPanelLauncher')?.hidden,
   utilityVisible:!document.querySelector('#bottomPanelUtility')?.hidden,
-  description:document.querySelector('#bottomPanelDescription')?.textContent?.trim(),
+  terminalVisible:!document.querySelector('#terminalHost')?.hidden,
+  terminalConnected:document.querySelector('#terminalHost')?.dataset.connected,
+  xterm:Boolean(document.querySelector('#terminalHost .xterm')),
 }));
 await page.click('#closeBottomPanel');
 await page.waitForFunction(()=>document.querySelector('#bottomPanel').hidden);
@@ -156,8 +159,10 @@ const valid=pageErrors.length===0
   &&bottom.pressed==='true'
   &&bottom.title==='Terminal'
   &&bottom.launcherHidden===true
-  &&bottom.utilityVisible===true
-  &&bottom.description?.includes('terminal bridge')
+  &&bottom.utilityVisible===false
+  &&bottom.terminalVisible===true
+  &&bottom.terminalConnected==='true'
+  &&bottom.xterm
   &&bottomRestored.title==='Browser'
   &&bottomRestored.launcherHidden===true
   &&bottomRestored.utilityVisible===true;
