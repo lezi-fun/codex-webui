@@ -25,9 +25,12 @@ for(const width of [320,360]){
   const page=await browser.newPage({viewport:{width,height:700},isMobile:true,hasTouch:true,colorScheme:'dark'});
   await page.goto(process.env.CODEX_WEBUI_TEST_URL||'http://127.0.0.1:8899',{waitUntil:'networkidle'});
   await page.click('#toggleBottomPanel');
+  const bottom=await page.evaluate(()=>{const panel=document.querySelector('#bottomPanel').getBoundingClientRect();return {width:innerWidth,scrollWidth:document.documentElement.scrollWidth,panel,title:document.querySelector('#bottomPanelTab').textContent.trim(),utilityVisible:!document.querySelector('#bottomPanelUtility').hidden}});
+  await page.click('#bottomPanelTab');
   const launcher=await page.evaluate(()=>{const panel=document.querySelector('#bottomPanel').getBoundingClientRect(),buttons=[...document.querySelectorAll('[data-bottom-panel-action]')].map(node=>node.getBoundingClientRect().toJSON());return {title:document.querySelector('#bottomPanelTab').textContent.trim(),visible:!document.querySelector('#bottomPanelLauncher').hidden,buttonsInside:buttons.every(rect=>rect.left>=panel.left&&rect.right<=panel.right)}});
   await page.click('[data-bottom-panel-action="terminal"]');
-  const result=await page.evaluate(launcher=>{const panel=document.querySelector('#bottomPanel').getBoundingClientRect();return {width:innerWidth,scrollWidth:document.documentElement.scrollWidth,panel,launcher,title:document.querySelector('#bottomPanelTab').textContent.trim(),utilityVisible:!document.querySelector('#bottomPanelUtility').hidden}},launcher);
+  const terminal=await page.evaluate(()=>({title:document.querySelector('#bottomPanelTab').textContent.trim(),utilityVisible:!document.querySelector('#bottomPanelUtility').hidden}));
+  const result={...bottom,launcher,terminal};
   results.push(result);
   await page.close();
 }
@@ -51,4 +54,10 @@ for(const width of [320,360]){
 await browser.close();
 console.log(JSON.stringify(results,null,2));
 const sync=results.find(result=>result.breakpointSync)?.breakpointSync;
-if(results.some(result=>result.scrollWidth>result.width||('ariaModal'in result&&(result.ariaModal!=='true'||!result.conversationInert||result.activeId!=='closeSidePanel'))||('launcher'in result&&(result.launcher.title!=='New tab'||!result.launcher.visible||!result.launcher.buttonsInside||result.title!=='Terminal'||!result.utilityVisible)))||!sync?.overlay.conversationInert||sync.overlay.modal!=='true'||sync.docked.conversationInert||sync.docked.modal!=='false'||!sync.overlayAgain.conversationInert||sync.overlayAgain.modal!=='true'||sync.overlayAgain.activeId!=='closeSidePanel')process.exit(1);
+const invalidPanel = results.some(result => {
+  if (result.scrollWidth > result.width) return true;
+  if ('ariaModal' in result && (result.ariaModal !== 'true' || !result.conversationInert || result.activeId !== 'closeSidePanel')) return true;
+  if ('title' in result && (result.title !== 'New tab' || result.utilityVisible || result.launcher.title !== 'New tab' || !result.launcher.visible || !result.launcher.buttonsInside || result.terminal.title !== 'Terminal' || !result.terminal.utilityVisible)) return true;
+  return false;
+});
+if(invalidPanel||!sync?.overlay.conversationInert||sync.overlay.modal!=='true'||sync.docked.conversationInert||sync.docked.modal!=='false'||!sync.overlayAgain.conversationInert||sync.overlayAgain.modal!=='true'||sync.overlayAgain.activeId!=='closeSidePanel')process.exit(1);

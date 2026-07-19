@@ -143,17 +143,73 @@ export function parseUnifiedDiff(diff = "") {
   return { hasChanges: files.length > 0 && (linesAdded + linesDeleted > 0), fileCount: files.length, linesAdded, linesDeleted, files };
 }
 
+function shellWords(command = "") {
+  return String(command).match(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s]+/g)?.map((word) => word.replace(/^(['"])(.*)\1$/, "$2")) || [];
+}
+
+function hasShellControl(command = "") {
+  let quote = null;
+  const value = String(command);
+  for (let index = 0; index < value.length; index++) {
+    const char = value[index];
+    if (char === "\\" && quote !== "'") { index++; continue; }
+    if (char === "'" || char === '"') {
+      if (quote === char) quote = null;
+      else if (quote == null) quote = char;
+      continue;
+    }
+    if (quote !== "'" && (char === "`" || (char === "$" && value[index + 1] === "("))) return true;
+    if (quote == null && (";&|<>\n\r".includes(char))) return true;
+  }
+  return false;
+}
+
+function explorationCommand(command = "") {
+  if (hasShellControl(command)) return null;
+  const words = shellWords(command);
+  const name = words[0]?.split("/").at(-1);
+  const hasOption = (options) => words.some((word) => options.some((option) => word === option || word.startsWith(`${option}=`)));
+  if (name === "find" && hasOption(["-delete", "-exec", "-execdir", "-ok", "-okdir", "-fprint", "-fprint0", "-fprintf", "-fls"])) return null;
+  if (name === "fd" && hasOption(["-x", "-X", "--exec", "--exec-batch"])) return null;
+  if (["cat", "head", "tail", "bat", "less"].includes(name)) {
+    const target = [...words.slice(1)].reverse().find((word) => !word.startsWith("-")) || "file";
+    return { category: "read", detail: target, activeLabel: "Reading", completedLabel: "Read", animation: "local-context" };
+  }
+  if (["rg", "grep", "ag", "ack"].includes(name)) {
+    const values = words.slice(1).filter((word) => !word.startsWith("-"));
+    const query = values[0];
+    return { category: "search", detail: query ? `for ${query}` : "files", activeLabel: "Searching", completedLabel: "Searched", animation: "searching" };
+  }
+  if (["ls", "find", "fd"].includes(name)) {
+    const target = words.slice(1).find((word) => !word.startsWith("-")) || "files";
+    return { category: "list", detail: target, activeLabel: "Listing", completedLabel: "Listed", animation: "local-context" };
+  }
+  return null;
+}
+
 export function summarizeActivity(item) {
   const status = item.status || "completed";
   const active = status === "inProgress";
   const failed = status === "failed" || status === "declined";
-  if (item.type === "commandExecution") return {
-    label: active ? "Running command" : failed ? "Command failed" : "Ran command",
-    detail: item.command || "",
-    animation: "run-command",
-    active,
-    tone: failed ? "error" : active ? "active" : "success",
-  };
+  if (item.type === "commandExecution") {
+    const exploration = explorationCommand(item.command);
+    if (exploration && !failed) return {
+      label: active ? exploration.activeLabel : exploration.completedLabel,
+      detail: exploration.detail,
+      category: exploration.category,
+      animation: exploration.animation,
+      active,
+      tone: active ? "active" : "success",
+    };
+    return {
+      label: active ? "Running command" : failed ? "Command failed" : "Ran command",
+      detail: item.command || "",
+      category: "command",
+      animation: "run-command",
+      active,
+      tone: failed ? "error" : active ? "active" : "success",
+    };
+  }
   if (item.type === "fileChange") {
     const count = item.changes?.length || 0;
     return {

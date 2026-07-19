@@ -79,6 +79,12 @@ await page.waitForFunction(()=>document.querySelector('#sidePanel').hidden||docu
 
 await page.click('#toggleBottomPanel');
 await page.waitForFunction(()=>!document.querySelector('#bottomPanel').hidden&&document.querySelector('#bottomPanel').getBoundingClientRect().height>0);
+const bottomLauncher=await page.evaluate(()=>({
+  pressed:document.querySelector('#toggleBottomPanel').getAttribute('aria-pressed'),
+  title:document.querySelector('#bottomPanelTab')?.textContent?.trim(),
+  launcherHidden:document.querySelector('#bottomPanelLauncher')?.hidden,
+  utilityVisible:!document.querySelector('#bottomPanelUtility')?.hidden,
+}));
 await page.click('[data-bottom-panel-action="terminal"]');
 const bottom=await page.evaluate(()=>({
   pressed:document.querySelector('#toggleBottomPanel').getAttribute('aria-pressed'),
@@ -89,8 +95,19 @@ const bottom=await page.evaluate(()=>({
 }));
 await page.click('#closeBottomPanel');
 await page.waitForFunction(()=>document.querySelector('#bottomPanel').hidden);
+await page.click('#toggleBottomPanel');
+await page.click('#bottomPanelTab');
+await page.click('[data-bottom-panel-action="browser"]');
+await page.click('#closeBottomPanel');
+await page.click('#toggleBottomPanel');
+const bottomRestored=await page.evaluate(()=>({
+  title:document.querySelector('#bottomPanelTab')?.textContent?.trim(),
+  launcherHidden:document.querySelector('#bottomPanelLauncher')?.hidden,
+  utilityVisible:!document.querySelector('#bottomPanelUtility')?.hidden,
+}));
+await page.click('#closeBottomPanel');
 
-console.log(JSON.stringify({initial,summary,opened,review,bottom,pageErrors},null,2));
+console.log(JSON.stringify({initial,summary,opened,review,bottomLauncher,bottom,bottomRestored,pageErrors},null,2));
 await browser.close();
 
 const expectedActions=['Review','Terminal','Browser','Files','Side task'];
@@ -133,9 +150,15 @@ const valid=pageErrors.length===0
   &&review.visibleTabs[1]?.startsWith('Review')
   &&review.reviewVisible===true
   &&review.launcherHidden===true
+  &&bottomLauncher.title==='New tab'
+  &&bottomLauncher.launcherHidden===false
+  &&bottomLauncher.utilityVisible===false
   &&bottom.pressed==='true'
   &&bottom.title==='Terminal'
   &&bottom.launcherHidden===true
   &&bottom.utilityVisible===true
-  &&bottom.description?.includes('terminal bridge');
+  &&bottom.description?.includes('terminal bridge')
+  &&bottomRestored.title==='Browser'
+  &&bottomRestored.launcherHidden===true
+  &&bottomRestored.utilityVisible===true;
 if(!valid)process.exit(1);

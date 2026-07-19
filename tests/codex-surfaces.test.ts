@@ -114,6 +114,22 @@ describe("Codex execution state", () => {
     expect(summarizeActivity({ type: "fileChange", status: "completed", changes: [{ path: "a.ts" }] })).toMatchObject({ label: "Edited a file", active: false, animation: "edit-files" });
     expect(summarizeActivity({ type: "webSearch", status: "failed", query: "Codex" })).toMatchObject({ label: "Search failed", active: false, tone: "error" });
   });
+
+  test("uses native exploration verbs for file commands", () => {
+    expect(summarizeActivity({ type: "commandExecution", status: "inProgress", command: "cat public/app.js" })).toMatchObject({ label: "Reading", detail: "public/app.js", category: "read", active: true });
+    expect(summarizeActivity({ type: "commandExecution", status: "completed", command: "cat public/app.js" })).toMatchObject({ label: "Read", detail: "public/app.js", category: "read", active: false });
+    expect(summarizeActivity({ type: "commandExecution", status: "inProgress", command: "rg -n native public" })).toMatchObject({ label: "Searching", category: "search", active: true });
+    expect(summarizeActivity({ type: "commandExecution", status: "completed", command: "ls public" })).toMatchObject({ label: "Listed", detail: "public", category: "list", active: false });
+  });
+
+  test("does not disguise compound or mutating commands as exploration", () => {
+    expect(summarizeActivity({ type: "commandExecution", status: "inProgress", command: "cat public/app.js && rm public/app.js" })).toMatchObject({ label: "Running command", detail: "cat public/app.js && rm public/app.js", category: "command" });
+    expect(summarizeActivity({ type: "commandExecution", status: "completed", command: "find . -delete" })).toMatchObject({ label: "Ran command", detail: "find . -delete", category: "command" });
+    expect(summarizeActivity({ type: "commandExecution", status: "completed", command: "fd native public --exec rm {}" })).toMatchObject({ label: "Ran command", detail: "fd native public --exec rm {}", category: "command" });
+    expect(summarizeActivity({ type: "commandExecution", status: "completed", command: "find . -fprint /tmp/out" })).toMatchObject({ label: "Ran command", detail: "find . -fprint /tmp/out", category: "command" });
+    expect(summarizeActivity({ type: "commandExecution", status: "completed", command: "find . -fls /tmp/out" })).toMatchObject({ label: "Ran command", detail: "find . -fls /tmp/out", category: "command" });
+    expect(summarizeActivity({ type: "commandExecution", status: "completed", command: "fd native public --exec=rm {}" })).toMatchObject({ label: "Ran command", detail: "fd native public --exec=rm {}", category: "command" });
+  });
 });
 
 
