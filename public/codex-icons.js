@@ -4,6 +4,7 @@ export const codexIconNodes = {
   arrowUp: '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
   chevronDown: '<path d="m6 9 6 6 6-6"/>',
+  chevronLeft: '<path d="m15 18-6-6 6-6"/>',
   chevronRight: '<path d="m9 18 6-6-6-6"/>',
   file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
   fileDiff: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M9 10h6"/><path d="M12 13V7"/><path d="M9 17h6"/>',

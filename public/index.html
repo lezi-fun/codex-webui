@@ -51,25 +51,21 @@
     <section class="conversation" id="conversation">
       <div class="empty-state" id="emptyState">
         <span id="emptyCodexMark"></span>
-        <h1>What do you want to build?</h1>
-        <p>Ask Codex to work in your project. It can inspect files, run commands, make changes, and verify the result.</p>
+        <h1>What can I help with in codex-webui?</h1>
       </div>
     </section>
     <div class="composer-dock">
-      <div class="composer-context" aria-label="Task context">
-        <button type="button" class="composer-context-item" id="workspaceButton" title="Change project folder"><span class="icon-slot" data-icon="folderOpen"></span><span id="workspaceName">codex-webui</span><span class="icon-slot chevron" data-icon="chevronDown"></span></button>
-        <span class="composer-context-item" data-context="environment"><span class="icon-slot" data-icon="monitor"></span><span id="workspaceEnvironment">Local</span></span>
-        <span class="composer-context-item" data-context="branch"><span class="icon-slot" data-icon="gitBranch"></span><span id="workspaceBranch">No branch</span></span>
-      </div>
       <form class="composer" id="composer">
-        <textarea id="prompt" rows="1" placeholder="Ask anything" aria-label="Task prompt"></textarea>
+        <div class="composer-autocomplete" id="composerAutocomplete" role="listbox" aria-label="Composer suggestions" hidden></div>
+        <div class="composer-context-tray" id="composerContextTray" aria-label="Attached context" hidden></div>
+        <textarea id="prompt" rows="1" placeholder="Do anything" aria-label="Task prompt"></textarea>
         <div class="composer-footer">
           <div class="composer-left">
             <button type="button" class="composer-circle-button add-control" data-composer-control="add" title="Attach files and folders" aria-label="Attach files and folders"><span class="icon-slot" data-icon="plus"></span></button>
             <button type="button" class="composer-text-button approval-control" id="modeButton" data-composer-control="approval" title="Approval policy"><span class="icon-slot" data-icon="shield"></span><span class="control-label">Request approval</span></button>
             <div class="model-picker composer-model-control" id="modelPicker" data-composer-control="model">
-              <button type="button" class="composer-text-button model-trigger" id="modelButton" aria-haspopup="listbox" aria-expanded="false"><span id="modelLabel">Loading models…</span><span id="effortLabel">medium</span><span class="icon-slot chevron" data-icon="chevronDown"></span></button>
-              <div class="model-menu" id="modelMenu" role="listbox" hidden></div>
+              <button type="button" class="composer-text-button model-trigger" id="modelButton" data-codex-intelligence-trigger aria-haspopup="menu" aria-expanded="false"><span id="modelLabel">Loading models…</span><span id="effortLabel">Medium</span><span class="icon-slot chevron" data-icon="chevronDown"></span></button>
+              <div class="model-menu" id="modelMenu" role="menu" hidden></div>
               <select id="effortSelect" class="sr-only" aria-label="Reasoning effort"><option value="medium">medium</option></select>
             </div>
           </div>

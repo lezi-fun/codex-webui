@@ -9,6 +9,7 @@ import { applyReviewPatch } from "./review-service.js";
 import { ReviewDiffStore, parseReviewPatchRequest } from "./review-state.js";
 import { createTerminalSession, normalizeTerminalResize, resolveTerminalCwd } from "./terminal-service.js";
 import { readWorkspaceContext } from "./workspace-context.js";
+import { searchWorkspaceFiles } from "./file-search.js";
 import {
   isAllowedBrowserRpcMethod,
   isAuthorizedHttpRequest,
@@ -213,6 +214,19 @@ const server = createServer(async (req, res) => {
       const context = readWorkspaceContext(url.searchParams.get("cwd") || defaultCwd, browseRoots);
       res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
       res.end(JSON.stringify(context));
+    } catch (error) {
+      res.writeHead(400, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+      res.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }));
+    }
+    return;
+  }
+  if (url.pathname === "/api/files/search") {
+    try {
+      const cwd = url.searchParams.get("cwd") || defaultCwd;
+      const query = url.searchParams.get("query") || "";
+      const items = await searchWorkspaceFiles(cwd, query, { allowedRoots: browseRoots, limit: 30 });
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+      res.end(JSON.stringify({ cwd, query, items }));
     } catch (error) {
       res.writeHead(400, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
       res.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }));

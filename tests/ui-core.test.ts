@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { DEFAULT_TURN_PAGE_SIZE, createLatestRequestGate, createTurnWindow, selectModelState } from "../public/ui-core.js";
+import { DEFAULT_TURN_PAGE_SIZE, applyComposerSuggestion, createLatestRequestGate, createTurnWindow, getComposerAutocomplete, selectModelState } from "../public/ui-core.js";
 
 describe("conversation turn window", () => {
   test("uses a small default page for fast first paint", () => {
@@ -49,5 +49,24 @@ describe("model selection", () => {
       { model: "gpt-5.5", isDefault: true, defaultReasoningEffort: "medium", supportedReasoningEfforts: [{ reasoningEffort: "medium" }] },
     ];
     expect(selectModelState(models, "removed-model").model).toBe("gpt-5.5");
+  });
+});
+
+describe("composer autocomplete", () => {
+  test("recognizes slash commands only in the leading composer token", () => {
+    expect(getComposerAutocomplete("/pla", 4)).toEqual({ type: "slash", query: "pla", start: 0, end: 4 });
+    expect(getComposerAutocomplete("  /model", 8)).toEqual({ type: "slash", query: "model", start: 2, end: 8 });
+    expect(getComposerAutocomplete("explain /plan", 13)).toBeNull();
+  });
+
+  test("recognizes an at mention at the cursor and replaces only that token", () => {
+    const match = getComposerAutocomplete("review @pack next", 12);
+    expect(match).toEqual({ type: "mention", query: "pack", start: 7, end: 12 });
+    expect(applyComposerSuggestion("review @pack next", match!, "@package.json")).toEqual({ text: "review @package.json next", cursor: 20 });
+  });
+
+  test("adds a trailing space when completing at the end", () => {
+    const slash = getComposerAutocomplete("/plan", 5)!;
+    expect(applyComposerSuggestion("/plan", slash, "/plan")).toEqual({ text: "/plan ", cursor: 6 });
   });
 });

@@ -19,7 +19,8 @@ const box=async selector=>page.locator(selector).first().evaluate(element=>{
 const result={
   title:await page.locator('#emptyState h1').textContent(),
   composer:await page.locator('#composer').count(),
-  workspace:await page.locator('#workspaceButton').count(),
+  fixedContext:await page.locator('.composer-context').count(),
+  projectControl:await page.locator('#projectButton').count(),
   hasAccountName:Boolean((await page.locator('#accountName').textContent())?.trim()),
   accountAvatar:await page.locator('#accountAvatar > img, #accountAvatar.account-initials').count(),
   accountButton:await box('#accountButton'),
@@ -33,9 +34,10 @@ const result={
 };
 console.log(JSON.stringify(result,null,2));
 await browser.close();
-const valid=result.title?.includes('What do you want to build')
+const valid=result.title?.includes('What can I help with in')
   &&result.composer===1
-  &&result.workspace===1
+  &&result.fixedContext===0
+  &&result.projectControl===1
   &&result.folderDialog===1
   &&result.hasAccountName
   &&result.accountAvatar===1

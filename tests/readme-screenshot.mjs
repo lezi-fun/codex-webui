@@ -17,10 +17,9 @@ await page.evaluate(async()=>{
  document.querySelector('#threadPath').textContent='~/projects/demo-app';
  document.querySelector('#projectName').textContent='demo-app';
  document.querySelector('#projectPath').textContent='~/projects/demo-app';
- document.querySelector('#workspaceName').textContent='demo-app';
- document.querySelector('#workspaceEnvironment').textContent='Local';
- document.querySelector('#workspaceBranch').textContent='main';
- document.querySelector('#modelLabel').textContent='Codex model';
+ document.querySelector('#modelLabel').textContent='5.5';
+ document.querySelector('#effortLabel').textContent='Medium';
+ document.querySelector('#prompt').placeholder='Ask for follow-up changes';
  api.renderAccount({type:'chatgpt',displayName:'Demo User',avatarUrl:null,planType:'plus',initials:'DU'});
  document.querySelector('#threadList').innerHTML=`
    <div class="thread-group">Today</div>
