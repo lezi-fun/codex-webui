@@ -18,6 +18,8 @@ await page.evaluate(async()=>{
  document.querySelector('#projectName').textContent='demo-app';
  document.querySelector('#projectPath').textContent='~/projects/demo-app';
  document.querySelector('#workspaceName').textContent='demo-app';
+ document.querySelector('#workspaceEnvironment').textContent='Local';
+ document.querySelector('#workspaceBranch').textContent='main';
  document.querySelector('#modelLabel').textContent='Codex model';
  api.renderAccount({type:'chatgpt',displayName:'Demo User',avatarUrl:null,planType:'plus',initials:'DU'});
  document.querySelector('#threadList').innerHTML=`

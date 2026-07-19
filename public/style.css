@@ -271,3 +271,60 @@ body{background:var(--app-main);color:var(--app-text)}
   .bottom-panel-launcher{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:8px}
   .bottom-panel-launcher button{min-width:0;width:100%;padding:0 4px}
 }
+
+/* Codex Desktop 26.707 composer: context row above, compact controls below. */
+.composer-dock{padding-top:6px;padding-bottom:8px}
+.composer-context{width:min(100%,800px);min-height:28px;margin:0 auto 6px;display:flex;align-items:center;gap:2px;padding:0 7px;overflow-x:auto;scrollbar-width:none;color:var(--app-text-secondary)}
+.composer-context::-webkit-scrollbar{display:none}
+.composer-context-item{height:28px;min-width:0;display:inline-flex;flex:0 0 auto;align-items:center;gap:5px;padding:0 7px;border-radius:7px;color:var(--app-text-secondary);font-size:12px;line-height:18px;white-space:nowrap}
+button.composer-context-item:hover{background:var(--app-hover);color:var(--app-text)}
+.composer-context-item .icon-slot{width:15px;height:15px;min-width:15px}
+.composer-context-item .icon-slot>svg{width:14px;height:14px}
+.composer-context-item .chevron{width:13px;height:13px;min-width:13px}
+#workspaceName,#workspaceBranch{max-width:190px;overflow:hidden;text-overflow:ellipsis}
+.composer{border-radius:22px;overflow:visible}
+.composer textarea{min-height:70px;padding:15px 14px 9px;background:transparent;font-size:14px;line-height:20px}
+.composer-footer{min-height:43px;gap:4px;padding:3px 7px 7px}
+.composer-left,.composer-right{gap:3px}
+.composer-circle-button{width:28px;height:28px;display:inline-grid;flex:0 0 28px;place-items:center;border-radius:50%;color:var(--app-text-secondary);line-height:0}
+.composer-circle-button:hover{background:var(--app-hover);color:var(--app-text)}
+.composer-circle-button .icon-slot{width:16px;height:16px;min-width:16px}
+.composer-circle-button .icon-slot>svg{width:15px;height:15px}
+.add-control{border:1px solid var(--app-border-default)}
+.composer-text-button{height:28px;min-width:0;display:inline-flex;align-items:center;gap:5px;padding:0 7px;border-radius:7px;color:var(--app-text-secondary);font-size:12px;line-height:18px;white-space:nowrap}
+.composer-text-button:hover,.composer-text-button[aria-expanded=true]{background:var(--app-hover);color:var(--app-text)}
+.composer-text-button .icon-slot{width:15px;height:15px;min-width:15px}
+.composer-text-button .icon-slot>svg{width:14px;height:14px}
+.approval-control{padding-left:6px}
+.composer-model-control{min-width:0}
+.model-trigger{min-width:0;max-width:230px;padding:0 6px 0 8px;gap:5px}
+.model-trigger #modelLabel{min-width:0;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--app-text)}
+.model-trigger #effortLabel{color:var(--app-text-secondary);text-transform:capitalize}
+.model-trigger .chevron{margin-left:0}
+.effort-options{display:flex;align-items:center;gap:4px;margin-top:5px;padding:7px 4px 1px;border-top:1px solid var(--app-border-default)}
+.effort-options>span{margin-right:auto;padding-left:5px;color:var(--app-text-tertiary);font-size:11px}
+.effort-option{height:26px;padding:0 8px;border-radius:6px;color:var(--app-text-secondary);font-size:11px;text-transform:capitalize}
+.effort-option:hover,.effort-option.selected{background:var(--app-hover);color:var(--app-text)}
+.dictation-control{border:0}
+.send-button{width:32px;height:32px;flex:0 0 32px;border-radius:50%;margin-left:1px;background:var(--app-text);color:var(--app-main)}
+.send-button:hover{filter:brightness(.9)}
+.send-button .icon-slot,.send-button .icon-slot>svg{width:16px;height:16px}
+@media(max-width:720px){
+  .composer-context{width:100%;padding-inline:2px}
+  #workspaceName,#workspaceBranch{max-width:110px}
+  .composer textarea{min-height:62px}
+  .composer-footer{overflow:hidden}
+  .model-trigger{max-width:150px}
+  .model-trigger #modelLabel{max-width:78px}
+}
+@media(max-width:420px){
+  .composer-dock{padding-top:4px}
+  .composer-context-item{padding-inline:5px}
+  .composer-context-item[data-context=environment]{display:none}
+  #workspaceName,#workspaceBranch{max-width:86px}
+  .approval-control .control-label{display:none}
+  .approval-control{width:28px;padding:0;justify-content:center}
+  .model-trigger{max-width:118px;padding-inline:5px}
+  .model-trigger #modelLabel{max-width:54px}
+  .composer-left{min-width:0;flex:1}
+}

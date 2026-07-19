@@ -8,6 +8,7 @@ import { defaultBrowseRoots, isDirectory, listFolders, resolveBrowsePath } from 
 import { applyReviewPatch } from "./review-service.js";
 import { ReviewDiffStore, parseReviewPatchRequest } from "./review-state.js";
 import { createTerminalSession, normalizeTerminalResize, resolveTerminalCwd } from "./terminal-service.js";
+import { readWorkspaceContext } from "./workspace-context.js";
 import {
   isAllowedBrowserRpcMethod,
   isAuthorizedHttpRequest,
@@ -205,6 +206,17 @@ const server = createServer(async (req, res) => {
   if (url.pathname === "/api/config") {
     res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
     res.end(JSON.stringify({ home: homeDir, defaultCwd, reviewRoot: reviewRoots[0] }));
+    return;
+  }
+  if (url.pathname === "/api/workspace/context") {
+    try {
+      const context = readWorkspaceContext(url.searchParams.get("cwd") || defaultCwd, browseRoots);
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+      res.end(JSON.stringify(context));
+    } catch (error) {
+      res.writeHead(400, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+      res.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }));
+    }
     return;
   }
   if (url.pathname === "/api/account" || url.pathname === "/api/account/avatar") {

@@ -56,27 +56,29 @@
       </div>
     </section>
     <div class="composer-dock">
+      <div class="composer-context" aria-label="Task context">
+        <button type="button" class="composer-context-item" id="workspaceButton" title="Change project folder"><span class="icon-slot" data-icon="folderOpen"></span><span id="workspaceName">codex-webui</span><span class="icon-slot chevron" data-icon="chevronDown"></span></button>
+        <span class="composer-context-item" data-context="environment"><span class="icon-slot" data-icon="monitor"></span><span id="workspaceEnvironment">Local</span></span>
+        <span class="composer-context-item" data-context="branch"><span class="icon-slot" data-icon="gitBranch"></span><span id="workspaceBranch">No branch</span></span>
+      </div>
       <form class="composer" id="composer">
-        <textarea id="prompt" rows="1" placeholder="Ask Codex anything, @ to mention files, / for commands"></textarea>
+        <textarea id="prompt" rows="1" placeholder="Ask anything" aria-label="Task prompt"></textarea>
         <div class="composer-footer">
           <div class="composer-left">
-            <button type="button" class="utility-button icon-only" title="Attach"><span class="icon-slot" data-icon="paperclip"></span></button>
-            <button type="button" class="utility-button workspace-button" id="workspaceButton" title="Change project folder"><span class="icon-slot" data-icon="folderOpen"></span><span id="workspaceName">codex-webui</span><span class="icon-slot chevron" data-icon="chevronDown"></span></button>
-            <button type="button" class="utility-button" id="modeButton"><span class="icon-slot" data-icon="list"></span><span>Agent</span></button>
-            <div class="model-picker" id="modelPicker">
-              <button type="button" class="select-button model-trigger" id="modelButton" aria-haspopup="listbox" aria-expanded="false"><span id="modelLabel">Loading models…</span><span class="icon-slot chevron" data-icon="chevronDown"></span></button>
+            <button type="button" class="composer-circle-button add-control" data-composer-control="add" title="Attach files and folders" aria-label="Attach files and folders"><span class="icon-slot" data-icon="plus"></span></button>
+            <button type="button" class="composer-text-button approval-control" id="modeButton" data-composer-control="approval" title="Approval policy"><span class="icon-slot" data-icon="shield"></span><span class="control-label">Request approval</span></button>
+            <div class="model-picker composer-model-control" id="modelPicker" data-composer-control="model">
+              <button type="button" class="composer-text-button model-trigger" id="modelButton" aria-haspopup="listbox" aria-expanded="false"><span id="modelLabel">Loading models…</span><span id="effortLabel">medium</span><span class="icon-slot chevron" data-icon="chevronDown"></span></button>
               <div class="model-menu" id="modelMenu" role="listbox" hidden></div>
+              <select id="effortSelect" class="sr-only" aria-label="Reasoning effort"><option value="medium">medium</option></select>
             </div>
-            <select id="effortSelect" class="select-button compact" aria-label="Reasoning effort"><option value="medium">medium</option></select>
           </div>
           <div class="composer-right">
-            <span class="context-label" id="contextLabel">0%</span>
-            <span class="context-ring" id="contextRing" aria-label="Context usage"></span>
-            <button class="send-button" id="sendButton" type="submit" title="Send"><span class="icon-slot" data-icon="arrowUp"></span></button>
+            <button type="button" class="composer-circle-button dictation-control" data-composer-control="dictation" title="Start dictation" aria-label="Start dictation"><span class="icon-slot" data-icon="mic"></span></button>
+            <button class="send-button" id="sendButton" data-composer-control="send" type="submit" title="Send message" aria-label="Send message"><span class="icon-slot" data-icon="arrowUp"></span></button>
           </div>
         </div>
       </form>
-      <div class="composer-caption"><span>Codex can make mistakes. Review changes before applying them.</span></div>
     </div>
   </main>
 
