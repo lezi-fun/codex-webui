@@ -6,11 +6,18 @@
 <meta name="theme-color" content="#181818">
 <title>Codex WebUI</title>
 <link rel="stylesheet" href="/style.css">
-<link rel="stylesheet" href="/vendor/katex/katex.min.css">
-<link rel="stylesheet" href="/vendor/xterm/xterm.css">
-<script src="/app.bundle.js" type="module"></script>
+<script src="/auth-bootstrap.js" type="module"></script>
 </head>
 <body>
+<section class="password-gate" id="passwordGate" aria-label="Codex WebUI login" hidden>
+  <form class="password-login" id="passwordLoginForm">
+    <span id="passwordCodexMark"></span>
+    <label class="sr-only" for="passwordInput">Password</label>
+    <input id="passwordInput" type="password" placeholder="Password" autocomplete="current-password" required>
+    <div class="password-error" id="passwordError" role="alert" hidden></div>
+    <button id="passwordLoginButton" type="submit">Log in</button>
+  </form>
+</section>
 <div id="app" class="app-shell">
   <header class="topbar">
     <div class="window-brand"><span id="windowCodexMark"></span><strong>Codex</strong></div>

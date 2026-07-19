@@ -24,6 +24,7 @@ await page.click('#toggleBottomPanel');
 await page.click('[data-bottom-panel-action="terminal"]');
 await page.waitForSelector('#terminalHost .xterm', { timeout: 10_000 });
 await page.locator('#terminalHost .xterm-helper-textarea').focus();
+await page.waitForFunction(()=>document.querySelector('#terminalHost')?.dataset.connected==='true');
 await page.keyboard.type("printf '\\033[31mANSI_RED\\033[0m \\033[32mANSI_GREEN\\033[0m\\n'");
 await page.keyboard.press('Enter');
 await page.waitForFunction(() => {

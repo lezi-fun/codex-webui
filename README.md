@@ -71,6 +71,18 @@ http://127.0.0.1:8899
 
 The default bind address is localhost. Use the folder button in the composer or sidebar to select the project Codex should work in.
 
+### LAN password login
+
+To listen on your LAN and show the Codex-style password screen to remote browsers:
+
+```bash
+HOST=0.0.0.0 CODEX_WEBUI_PASSWORD='use-a-long-random-password' bun run start
+```
+
+Direct `localhost` access remains available without the password screen. LAN requests must log in before the main application bundle, HTTP APIs, or WebSocket bridges are available. Successful logins use a signed `HttpOnly`, `SameSite=Strict` session cookie.
+
+`CODEX_WEBUI_ACCESS_TOKEN` remains available for compatibility with Basic/Bearer clients. If both variables are set, the browser login uses `CODEX_WEBUI_PASSWORD`.
+
 ## Configuration
 
 Copy the example file if you want custom settings:

@@ -11,8 +11,11 @@ import { createTerminalSession, normalizeTerminalResize, resolveTerminalCwd } fr
 import { readWorkspaceContext } from "./workspace-context.js";
 import { searchWorkspaceFiles } from "./file-search.js";
 import {
+  createPasswordSession,
   isAllowedBrowserRpcMethod,
   isAuthorizedHttpRequest,
+  isRequestAuthorized,
+  passwordSessionCookie,
   resolvePublicAsset,
   resolveSafeRegularFile,
   unauthorizedResponse,
@@ -28,6 +31,8 @@ import {
 const host = process.env.HOST || "127.0.0.1";
 const port = Number(process.env.PORT || 8899);
 const accessToken = process.env.CODEX_WEBUI_ACCESS_TOKEN || null;
+const password = process.env.CODEX_WEBUI_PASSWORD || null;
+const authSecret = password || accessToken;
 const localhostOnly = host === "127.0.0.1" || host === "::1" || host === "localhost";
 const publicDir = resolve(import.meta.dir, "public");
 const homeDir = process.env.HOME || process.cwd();
@@ -195,7 +200,66 @@ const mime: Record<string, string> = {
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", "http://localhost");
-  if (!isAuthorizedHttpRequest(req, accessToken, localhostOnly)) {
+  const loginAssets = new Set(["/", "/index.html", "/style.css", "/auth-bootstrap.js", "/codex-brand.js"]);
+  if (url.pathname === "/api/auth/status") {
+    const authenticated = isAuthorizedHttpRequest(req, authSecret, localhostOnly);
+    res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });
+    res.end(JSON.stringify({ passwordRequired: Boolean(password), authenticated }));
+    return;
+  }
+  if (url.pathname === "/api/auth/login") {
+    if (req.method !== "POST") {
+      res.writeHead(405, { "content-type": "application/json; charset=utf-8", allow: "POST" });
+      res.end(JSON.stringify({ error: "Method not allowed" }));
+      return;
+    }
+    let body = "";
+    req.setEncoding("utf8");
+    req.on("data", chunk => {
+      body += chunk;
+      if (body.length > 4096) req.destroy(new Error("Login payload too large"));
+    });
+    req.on("end", () => {
+      let submittedPassword = "";
+      try { submittedPassword = JSON.parse(body || "{}").password || ""; }
+      catch { /* Invalid JSON is an invalid password. */ }
+      const valid = password && isRequestAuthorized({
+        remoteAddress: req.socket.remoteAddress,
+        hostHeader: req.headers.host,
+        authorization: `Bearer ${submittedPassword}`,
+        accessToken: password,
+        origin: req.headers.origin,
+        fetchSite: req.headers["sec-fetch-site"],
+        forwardedFor: req.headers["x-forwarded-for"],
+        forwarded: req.headers.forwarded,
+        realIp: req.headers["x-real-ip"],
+        allowLoopback: false,
+      });
+      if (!valid) {
+        res.writeHead(401, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });
+        res.end(JSON.stringify({ error: "Incorrect password" }));
+        return;
+      }
+      const session = createPasswordSession(password);
+      res.writeHead(200, {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "no-store",
+        "set-cookie": passwordSessionCookie(session.token, { secure: Boolean((req.socket as any).encrypted) }),
+        "x-content-type-options": "nosniff",
+      });
+      res.end(JSON.stringify({ ok: true }));
+    });
+    return;
+  }
+  if (!isAuthorizedHttpRequest(req, authSecret, localhostOnly)) {
+    if (loginAssets.has(url.pathname)) {
+      const file = resolvePublicAsset(url.pathname, publicDir);
+      if (file) {
+        res.writeHead(200, { "content-type": mime[extname(file)] || "application/octet-stream", "cache-control": "no-store" });
+        res.end(readFileSync(file));
+        return;
+      }
+    }
     unauthorizedResponse(res);
     return;
   }
@@ -358,7 +422,7 @@ server.on("upgrade", (req, socket, head) => {
   let pathname = "";
   try { pathname = new URL(req.url || "/", "http://localhost").pathname; }
   catch { socket.destroy(); return; }
-  if ((pathname !== "/ws" && pathname !== "/terminal") || !isAuthorizedHttpRequest(req, accessToken, localhostOnly)) {
+  if ((pathname !== "/ws" && pathname !== "/terminal") || !isAuthorizedHttpRequest(req, authSecret, localhostOnly)) {
     const body = JSON.stringify({ error: "Authentication required" });
     socket.end([
       "HTTP/1.1 401 Unauthorized",
@@ -438,7 +502,7 @@ if (!frontendBuild.success) throw new Error(`Frontend build failed: ${frontendBu
 startCodex();
 server.listen(port, host, () => {
   console.log(`Codex WebUI listening on http://${host}:${port}`);
-  if (!localhostOnly && !accessToken) console.warn("[codex-webui] Non-localhost requests are disabled until CODEX_WEBUI_ACCESS_TOKEN is configured");
+  if (!localhostOnly && !authSecret) console.warn("[codex-webui] Non-localhost requests are disabled until CODEX_WEBUI_PASSWORD or CODEX_WEBUI_ACCESS_TOKEN is configured");
   if (!localhostOnly) {
     const addresses = Object.values(networkInterfaces()).flat().filter((entry): entry is NonNullable<typeof entry> => !!entry && entry.family === "IPv4" && !entry.internal);
     for (const entry of addresses) console.log(`LAN: http://${entry.address}:${port} (authentication required)`);
