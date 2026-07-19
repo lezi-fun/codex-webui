@@ -2,16 +2,21 @@ import { chromium } from 'playwright';
 import { artifact, launchOptions } from './browser-runtime.mjs';
 const browser=await chromium.launch(launchOptions());
 const page=await browser.newPage({viewport:{width:591,height:1100},deviceScaleFactor:1,isMobile:true,hasTouch:true});
-await page.goto('http://127.0.0.1:8899',{waitUntil:'networkidle'});
+await page.goto(process.env.CODEX_WEBUI_TEST_URL||'http://127.0.0.1:8899',{waitUntil:'networkidle'});
 const box=async s=>page.locator(s).evaluate(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,display:getComputedStyle(e).display,transform:getComputedStyle(e).transform}});
 const closedSidebar=await box('.sidebar');
 await page.click('#toggleSidebar');
 await page.waitForFunction(()=>Math.round(document.querySelector('.sidebar').getBoundingClientRect().x)===0);
 const openSidebar=await box('.sidebar');
-await page.click('#accountButton');
-const accountMenu=await box('#accountMenu');
-await page.click('#toggleSidebar');
-await page.waitForFunction(()=>document.querySelector('.sidebar').getBoundingClientRect().x<0);
+const sidebarVisibility=await page.evaluate(()=>{const sidebar=document.querySelector('.sidebar'),rect=sidebar.getBoundingClientRect(),style=getComputedStyle(sidebar);return{display:style.display,visibility:style.visibility,opacity:style.opacity,zIndex:style.zIndex,topElement:document.elementFromPoint(Math.min(rect.right-10,innerWidth-10),Math.min(rect.top+20,innerHeight-10))?.closest('.sidebar')===sidebar}});
+await page.screenshot({path:artifact('mobile-sidebar-open.png'),fullPage:false});
+const sidebarRows=await page.locator('.sidebar .thread-item').count();
+await page.locator('.sidebar .thread-item').first().click();
+const sidebarClosedAfterSelection=await page.waitForFunction(()=>document.querySelector('.sidebar').getBoundingClientRect().x<0,{timeout:3000}).then(()=>true).catch(()=>false);
+if(!sidebarClosedAfterSelection){
+  await page.click('#toggleSidebar');
+  await page.waitForFunction(()=>document.querySelector('.sidebar').getBoundingClientRect().x<0);
+}
 const closedSummary=await box('#summaryPanel');
 const closedSidePanel=await box('#sidePanel');
 await page.click('#toggleSummaryPanel');
@@ -22,12 +27,12 @@ await page.waitForFunction(()=>document.querySelector('#summaryPanel').hidden&&d
 await page.click('#toggleSidePanel');
 await page.waitForFunction(()=>!document.querySelector('#sidePanel').hidden&&document.querySelector('#sidePanel').getBoundingClientRect().width>0);
 const openSidePanel=await box('#sidePanel');
-const result={viewport:await page.evaluate(()=>({innerWidth,scrollWidth:document.documentElement.scrollWidth,bodyWidth:document.body.scrollWidth})),app:await box('.app-shell'),main:await box('.conversation-shell'),closedSidebar,openSidebar,accountButton:await box('#accountButton'),accountMenu,closedSummary,openSummary,closedSidePanel,openSidePanel,topbar:await box('.topbar'),composer:await box('.composer')};
+const result={viewport:await page.evaluate(()=>({innerWidth,scrollWidth:document.documentElement.scrollWidth,bodyWidth:document.body.scrollWidth})),app:await box('.app-shell'),main:await box('.conversation-shell'),closedSidebar,openSidebar,sidebarVisibility,sidebarRows,sidebarClosedAfterSelection,closedSummary,openSummary,closedSidePanel,openSidePanel,topbar:await box('.topbar'),composer:await box('.composer')};
 console.log(JSON.stringify(result,null,2));
 await page.screenshot({path:artifact('mobile-layout.png'),fullPage:false});
 
 const narrow=await browser.newPage({viewport:{width:320,height:800},deviceScaleFactor:1,isMobile:true,hasTouch:true});
-await narrow.goto('http://127.0.0.1:8899',{waitUntil:'networkidle'});
+await narrow.goto(process.env.CODEX_WEBUI_TEST_URL||'http://127.0.0.1:8899',{waitUntil:'networkidle'});
 await narrow.click('#toggleBottomPanel');
 const bottom=await narrow.evaluate(()=>({innerWidth,scrollWidth:document.documentElement.scrollWidth,panelWidth:document.querySelector('#bottomPanel').getBoundingClientRect().width,title:document.querySelector('#bottomPanelTab').textContent.trim(),utilityVisible:!document.querySelector('#bottomPanelUtility').hidden}));
 await narrow.click('#bottomPanelTab');
@@ -57,4 +62,4 @@ await narrow.waitForFunction(()=>document.activeElement?.id==='toggleSidePanel')
 const sideRestore=await narrow.evaluate(()=>({activeId:document.activeElement?.id,conversationInert:document.querySelector('.conversation-shell').inert}));
 console.log(JSON.stringify({narrow:{bottom,bottomLauncher,terminal,summaryFocus,summaryRestore,sideFocus,dialogEscape,sideRestore}},null,2));
 await browser.close();
-if(result.viewport.scrollWidth>591||result.main.x<0||result.main.width<560||result.closedSummary.display!=='none'||result.closedSidePanel.display!=='none'||result.openSummary.width!==591||result.openSidePanel.width!==591||result.closedSidebar.x>=0||Math.abs(result.openSidebar.x)>0.5||result.openSidebar.width!==275||result.accountButton.height!==30||result.accountMenu.display==='none'||bottom.scrollWidth>320||bottom.panelWidth!==320||bottom.title!=='New tab'||bottom.utilityVisible||bottomLauncher.title!=='New tab'||!bottomLauncher.visible||!bottomLauncher.buttonsInside||terminal.title!=='Terminal'||terminal.utilityVisible||!terminal.visible||terminal.connected!=='true'||!terminal.xterm||summaryFocus.activeId!=='closeSummaryPanel'||!summaryFocus.conversationInert||summaryRestore.activeId!=='toggleSummaryPanel'||summaryRestore.conversationInert||sideFocus.activeId!=='closeSidePanel'||!sideFocus.conversationInert||!dialogEscape.sideOpen||sideRestore.activeId!=='toggleSidePanel'||sideRestore.conversationInert)process.exit(1);
+if(result.viewport.scrollWidth>591||result.main.x<0||result.main.width<560||result.closedSummary.display!=='none'||result.closedSidePanel.display!=='none'||result.openSummary.width!==591||result.openSidePanel.width!==591||result.closedSidebar.x>=0||Math.abs(result.openSidebar.x)>0.5||result.openSidebar.width!==275||result.sidebarVisibility.display==='none'||result.sidebarVisibility.visibility!=='visible'||result.sidebarVisibility.opacity==='0'||!result.sidebarVisibility.topElement||result.sidebarRows<1||!result.sidebarClosedAfterSelection||bottom.scrollWidth>320||bottom.panelWidth!==320||bottom.title!=='New tab'||bottom.utilityVisible||bottomLauncher.title!=='New tab'||!bottomLauncher.visible||!bottomLauncher.buttonsInside||terminal.title!=='Terminal'||terminal.utilityVisible||!terminal.visible||terminal.connected!=='true'||!terminal.xterm||summaryFocus.activeId!=='closeSummaryPanel'||!summaryFocus.conversationInert||summaryRestore.activeId!=='toggleSummaryPanel'||summaryRestore.conversationInert||sideFocus.activeId!=='closeSidePanel'||!sideFocus.conversationInert||!dialogEscape.sideOpen||sideRestore.activeId!=='toggleSidePanel'||sideRestore.conversationInert)process.exit(1);

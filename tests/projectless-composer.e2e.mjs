@@ -49,7 +49,7 @@ if(selectedProject.triggerHidden
   ||!selectedProject.heading?.includes(selectedProject.sidebar)
   ||picker.title!=='Project'
   ||!picker.projectless?.includes('None')||!picker.projectless?.includes("Don't work in a project")
-  ||projectless.heading!=='What can I help with?'
+  ||projectless.heading!=='What can I help?'
   ||projectless.sidebar!=='Tasks'
   ||projectless.path!=='~'
   ||projectless.threadPath!==''
