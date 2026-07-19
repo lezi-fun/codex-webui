@@ -38,22 +38,28 @@ let seq = 1;
 let codex: ChildProcessWithoutNullStreams | null = null;
 let stdoutBuffer = "";
 let connected = false;
+let shuttingDown = false;
+let restartTimer: ReturnType<typeof setTimeout> | null = null;
+let httpClosed = false;
 const accountLoader = createAccountIdentityLoader(async (refresh) => {
   const account = await request("account/read", { refreshToken: refresh });
   return resolveAccountIdentity(account);
 });
 
 function startCodex() {
+  if (shuttingDown) return;
   if (codex && codex.exitCode === null) return;
-  codex = spawn("codex", ["app-server", "--stdio"], {
+  const child = spawn("codex", ["app-server", "--stdio"], {
     cwd: defaultCwd,
     env: process.env,
     stdio: ["pipe", "pipe", "pipe"],
+    detached: process.platform !== "win32",
   });
+  codex = child;
   connected = false;
   stdoutBuffer = "";
-  codex.stdout.setEncoding("utf8");
-  codex.stdout.on("data", (chunk) => {
+  child.stdout.setEncoding("utf8");
+  child.stdout.on("data", (chunk) => {
     stdoutBuffer += chunk;
     for (;;) {
       const pos = stdoutBuffer.indexOf("\n");
@@ -65,25 +71,41 @@ function startCodex() {
       catch (error) { console.error("[codex-webui] invalid app-server JSON:", line, error); }
     }
   });
-  codex.stderr.setEncoding("utf8");
-  codex.stderr.on("data", (data) => console.error("[codex app-server]", String(data).trimEnd()));
-  codex.on("exit", (code, signal) => {
+  child.stderr.setEncoding("utf8");
+  child.stderr.on("data", (data) => console.error("[codex app-server]", String(data).trimEnd()));
+  child.on("exit", (code, signal) => {
     connected = false;
     accountLoader.invalidate();
     reviewDiffs.clear();
     broadcast({ type: "bridge/status", status: "disconnected", code, signal });
     for (const item of pending.values()) item.reject(new Error("Codex app-server exited"));
     pending.clear();
-    codex = null;
-    setTimeout(startCodex, 1000);
+    if (codex === child) codex = null;
+    if (shuttingDown) maybeFinishShutdown();
+    else restartTimer = setTimeout(startCodex, 1000);
   });
   initialize().catch((error) => {
     console.error("[codex-webui] initialize failed", error);
-    codex?.kill();
+    terminateCodex();
   });
 }
 
+function terminateCodex(signal: NodeJS.Signals = "SIGTERM") {
+  const child = codex;
+  if (!child || child.exitCode !== null) return;
+  if (process.platform !== "win32" && child.pid) {
+    try { process.kill(-child.pid, signal); return; }
+    catch { /* Fall back to terminating the wrapper process. */ }
+  }
+  child.kill(signal);
+}
+
+function maybeFinishShutdown() {
+  if (shuttingDown && httpClosed && !codex) process.exit(0);
+}
+
 function sendRaw(message: any) {
+  if (shuttingDown) throw new Error("Codex WebUI is shutting down");
   startCodex();
   codex!.stdin.write(JSON.stringify(message) + "\n");
 }
@@ -343,9 +365,24 @@ server.listen(port, host, () => {
 });
 
 function shutdown() {
-  for (const client of clients) client.close();
-  codex?.kill();
-  server.close(() => process.exit(0));
+  if (shuttingDown) return;
+  shuttingDown = true;
+  connected = false;
+  if (restartTimer) clearTimeout(restartTimer);
+  restartTimer = null;
+  for (const item of pending.values()) item.reject(new Error("Codex WebUI is shutting down"));
+  pending.clear();
+  for (const client of clients) client.terminate();
+  clients.clear();
+  wss.close();
+  terminateCodex();
+  server.close(() => { httpClosed = true; maybeFinishShutdown(); });
+  server.closeAllConnections?.();
+  const forceExit = setTimeout(() => {
+    terminateCodex("SIGKILL");
+    process.exit(0);
+  }, 5000);
+  forceExit.unref();
 }
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);

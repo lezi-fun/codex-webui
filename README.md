@@ -27,9 +27,13 @@ Codex WebUI connects directly to `codex app-server --stdio` and exposes the loca
 - Unified and split diff review, word wrap, expand/collapse, Undo, and Reapply
 - Safe Markdown, GFM, fenced code blocks, links, and KaTeX rendering
 - Project-folder picker with restricted filesystem browsing
-- Codex-style sidebar account identity with display name, proxied avatar fallback, and plan
-- Long-thread windowing to avoid rendering thousands of turns at once
-- Responsive desktop and mobile layouts, including a full-screen mobile review drawer
+- Codex-style sidebar account identity with display name, same-origin avatar fallback, and plan
+- Codex Desktop-style 46px header with separate Bottom Panel, Summary, and Task Side Panel controls; the Bottom Panel opens its native-style New tab launcher
+- Collapsed-by-default Summary panel matching the native Environment, Scheduled, Computer Use, Plan, Side tasks, and Sources sections; app-server data is shown when available and native-store-only sections use explicit unavailable or empty states instead of fabricated content
+- Collapsed-by-default Task Side Panel mirroring the native New tab launcher: Review opens the real diff, Files links to the restricted project picker, and native-bridge-only Terminal, Browser, and Side task entries show an explicit availability notice instead of a simulated tool
+- Light and dark surfaces driven by shared Codex-style color tokens, including the monochrome transparent Codex Knot
+- Windowed long conversations instead of rendering thousands of turns at once
+- Responsive desktop and mobile layouts with full-screen Summary and Task Side Panel drawers on phones
 - Localhost-only by default; authenticated LAN access is opt-in
 
 ## Requirements
@@ -128,6 +132,8 @@ Review data is driven by `turn/diff/updated`. Unified diffs are parsed into file
 - Git-backed Reapply (`git apply`)
 
 Undo/Reapply is deliberately restricted to the configured repository root.
+
+The shell mirrors Codex Desktop's separate Bottom Panel, Summary, and Task Side Panel controls. The app-server bridge currently provides the real Review flow and restricted local project selection. Native Desktop-only Terminal, embedded Browser, and Side task tabs remain visible for structural parity but show a clear unavailable message instead of simulating those capabilities.
 
 ## Architecture
 

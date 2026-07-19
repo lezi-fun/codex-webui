@@ -16,6 +16,6 @@ Source verification: `/Applications/Codex.app/Contents/Resources/THIRD_PARTY_NOT
 
 ## Codex.app visual assets
 
-`public/assets/codex-app-icon*.png` and `public/assets/codex-motion/*.json` were extracted from a locally installed Codex.app to reproduce its brand and tool-motion presentation. They are distributed separately from the MIT-licensed source code and remain subject to the rights and terms of their respective owner. They may be removed or replaced if requested by the relevant rights holder.
+`public/codex-brand.js` retains the monochrome Knot path extracted from the installed Codex.app wordmark, while `public/assets/codex-app-icon*.png` and `public/assets/codex-motion/*.json` were extracted from the same local application to reproduce its brand and tool-motion presentation. These assets are distributed separately from the MIT-licensed source code and remain subject to the rights and terms of their respective owner. They may be removed or replaced if requested by the relevant rights holder.
 
 OpenAI, Codex, and related marks are trademarks of their respective owners. This project is not affiliated with or endorsed by OpenAI.

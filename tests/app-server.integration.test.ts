@@ -96,9 +96,18 @@ beforeAll(async () => {
   await new Promise<void>((resolve, reject) => { ws.once("open", resolve); ws.once("error", reject); });
 }, 30_000);
 
-afterAll(() => {
-  ws?.close();
-  proc?.kill();
+afterAll(async () => {
+  ws?.terminate();
+  if (!proc) return;
+  proc.kill("SIGTERM");
+  const exited = await Promise.race([
+    proc.exited.then(() => true),
+    new Promise<boolean>(resolve => setTimeout(() => resolve(false), 7000)),
+  ]);
+  if (!exited) {
+    proc.kill("SIGKILL");
+    await proc.exited;
+  }
 });
 
 describe("Codex WebUI app-server bridge", () => {

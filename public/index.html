@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#171717">
+<meta name="theme-color" content="#181818">
 <title>Codex WebUI</title>
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/vendor/katex/katex.min.css">
@@ -12,11 +12,13 @@
 <body>
 <div id="app" class="app-shell">
   <header class="topbar">
-    <div class="window-brand"><img class="codex-mark" src="/assets/codex-app-icon-128.png" alt=""><strong>Codex</strong><span class="webui-label">WebUI</span></div>
+    <div class="window-brand"><span id="windowCodexMark"></span><strong>Codex</strong></div>
     <div class="thread-heading"><span id="threadTitle">New task</span><span id="threadPath"></span></div>
     <div class="top-actions">
       <button class="icon-button" id="toggleSidebar" title="Toggle sidebar"><span class="icon-slot" data-icon="panelLeft"></span></button>
-      <button class="icon-button" id="refreshButton" title="Refresh"><span class="icon-slot" data-icon="refreshCw"></span></button>
+      <button class="icon-button" id="toggleBottomPanel" title="Toggle terminal panel" aria-controls="bottomPanel" aria-expanded="false" aria-pressed="false"><span class="icon-slot" data-icon="panelBottom"></span></button>
+      <button class="icon-button" id="toggleSummaryPanel" title="Toggle summary" aria-controls="summaryPanel" aria-expanded="false" aria-pressed="false"><span class="icon-slot" data-icon="info"></span></button>
+      <button class="icon-button" id="toggleSidePanel" title="Toggle side panel" aria-controls="sidePanel" aria-expanded="false" aria-pressed="false"><span class="icon-slot" data-icon="panelRight"></span></button>
     </div>
   </header>
 
@@ -47,7 +49,7 @@
   <main class="conversation-shell">
     <section class="conversation" id="conversation">
       <div class="empty-state" id="emptyState">
-        <img class="empty-mark" src="/assets/codex-app-icon-128.png" alt="Codex">
+        <span id="emptyCodexMark"></span>
         <h1>What do you want to build?</h1>
         <p>Ask Codex to work in your project. It can inspect files, run commands, make changes, and verify the result.</p>
       </div>
@@ -77,11 +79,73 @@
     </div>
   </main>
 
-  <aside class="changes-panel" id="changesPanel">
-    <div class="panel-tabs"><button class="panel-tab active" id="changesTab" data-panel="changes">Changes <span id="changeCount">0</span></button><button class="panel-tab" id="filesTab" data-panel="files">Files</button></div>
-    <div class="change-summary"><span id="changeSummary">No changes yet</span><span class="review-stats" id="reviewStats"></span><button class="icon-button small" title="Toggle word wrap" id="reviewWrap"><span class="icon-slot" data-icon="wrapText"></span></button><button class="icon-button small" title="Collapse all diffs" id="reviewExpand"><span class="icon-slot" data-icon="chevronsUp"></span></button><button class="icon-button small" title="Switch to split diff" id="reviewMode"><span class="icon-slot" data-icon="columns2"></span></button><button class="icon-button small" title="Undo changes" id="reviewPatch"><span class="icon-slot" data-icon="undo"></span></button><button class="icon-button small" title="Close panel" id="closeChanges"><span class="icon-slot" data-icon="x"></span></button></div>
-    <div class="change-list" id="changeList"><div class="panel-empty">Changes made by Codex will appear here.</div></div>
+  <aside class="side-panel" id="sidePanel" hidden>
+    <div class="side-panel-toolbar">
+      <div class="side-panel-tabs" role="tablist" aria-label="Task side panel">
+        <button class="side-panel-tab active" id="newTab" type="button" role="tab" aria-selected="true" data-side-panel-tab="launcher">New tab</button>
+        <button class="side-panel-tab" id="reviewTab" type="button" role="tab" aria-selected="false" data-side-panel-tab="review" hidden>Review <span id="changeCount">0</span></button>
+        <button class="side-panel-tab" id="utilityTab" type="button" role="tab" aria-selected="false" data-side-panel-tab="utility" hidden></button>
+      </div>
+      <div class="side-panel-tools">
+        <button class="icon-button small" id="openSidePanelTab" type="button" title="Open side panel tab"><span class="icon-slot" data-icon="plus"></span></button>
+        <button class="icon-button small" title="Close panel" id="closeSidePanel" type="button"><span class="icon-slot" data-icon="x"></span></button>
+      </div>
+    </div>
+    <span class="sr-only" id="sidePanelTitle">New tab</span>
+    <section class="side-panel-launcher" id="sidePanelLauncher" role="tabpanel">
+      <div class="side-panel-launcher-list">
+        <button class="side-panel-launcher-action" type="button" data-side-panel-action="review"><span class="icon-slot" data-icon="fileDiff"></span><span>Review</span></button>
+        <button class="side-panel-launcher-action" type="button" data-side-panel-action="terminal"><span class="icon-slot" data-icon="terminal"></span><span>Terminal</span></button>
+        <button class="side-panel-launcher-action" type="button" data-side-panel-action="browser"><span class="icon-slot" data-icon="globe"></span><span>Browser</span></button>
+        <button class="side-panel-launcher-action" type="button" data-side-panel-action="files"><span class="icon-slot" data-icon="folderOpen"></span><span>Files</span></button>
+        <button class="side-panel-launcher-action" type="button" data-side-panel-action="side-task"><span class="icon-slot" data-icon="messageSquare"></span><span>Side task</span></button>
+      </div>
+    </section>
+    <section class="review-panel-content" id="reviewPanelContent" role="tabpanel" hidden>
+      <div id="changesPanel">
+        <div class="change-summary"><span id="changeSummary">No changes yet</span><span class="review-stats" id="reviewStats"></span><button class="icon-button small" title="Toggle word wrap" id="reviewWrap"><span class="icon-slot" data-icon="wrapText"></span></button><button class="icon-button small" title="Collapse all diffs" id="reviewExpand"><span class="icon-slot" data-icon="chevronsUp"></span></button><button class="icon-button small" title="Switch to split diff" id="reviewMode"><span class="icon-slot" data-icon="columns2"></span></button><button class="icon-button small" title="Undo changes" id="reviewPatch"><span class="icon-slot" data-icon="undo"></span></button></div>
+        <div class="change-list" id="changeList"><div class="panel-empty">Changes made by Codex will appear here.</div></div>
+      </div>
+    </section>
+    <section class="side-panel-utility" id="utilityPanelContent" role="tabpanel" hidden>
+      <div class="side-panel-utility-empty"><span class="icon-slot" id="utilityPanelIcon"></span><h2 id="utilityPanelTitle"></h2><p id="utilityPanelDescription"></p><button id="utilityPanelAction" type="button" hidden></button></div>
+    </section>
   </aside>
+  <aside class="summary-panel" id="summaryPanel" hidden>
+    <div class="summary-panel-toolbar"><strong>Summary</strong><button class="icon-button small" title="Close summary" id="closeSummaryPanel" type="button"><span class="icon-slot" data-icon="x"></span></button></div>
+    <div class="summary-panel-scroll">
+      <section class="summary-section">
+        <h2 class="summary-section-title">Environment</h2>
+        <div class="summary-row"><span class="icon-slot" data-icon="folderOpen"></span><span id="summaryWorkspace">codex-webui</span></div>
+        <div class="summary-row"><span class="icon-slot" data-icon="gitBranch"></span><span id="summaryBranch">Local workspace</span></div>
+      </section>
+      <section class="summary-section">
+        <h2 class="summary-section-title">Scheduled</h2>
+        <div class="summary-empty">Scheduled task data requires the native desktop bridge.</div>
+      </section>
+      <section class="summary-section">
+        <h2 class="summary-section-title">Computer Use</h2>
+        <div class="summary-empty">Computer Use controls require the native desktop bridge.</div>
+      </section>
+      <section class="summary-section">
+        <h2 class="summary-section-title">Plan</h2>
+        <div class="summary-empty" id="summaryPlan">Plan data is not exposed by app-server.</div>
+      </section>
+      <section class="summary-section">
+        <h2 class="summary-section-title">Side tasks</h2>
+        <div class="summary-empty" id="summarySideTasks">Side task data requires the native desktop bridge.</div>
+      </section>
+      <section class="summary-section">
+        <h2 class="summary-section-title">Sources</h2>
+        <div class="summary-empty" id="summarySource">Conversation source data is not exposed by app-server.</div>
+      </section>
+    </div>
+  </aside>
+  <section class="bottom-panel" id="bottomPanel" aria-label="Bottom panel" hidden>
+    <div class="bottom-panel-tabs"><button class="bottom-panel-tab active" id="bottomPanelTab" type="button">New tab</button><button class="icon-button small" id="closeBottomPanel" type="button" title="Close bottom panel"><span class="icon-slot" data-icon="x"></span></button></div>
+    <div class="bottom-panel-launcher" id="bottomPanelLauncher"><button type="button" data-bottom-panel-action="terminal"><span class="icon-slot" data-icon="terminal"></span><span>Terminal</span></button><button type="button" data-bottom-panel-action="browser"><span class="icon-slot" data-icon="globe"></span><span>Browser</span></button><button type="button" data-bottom-panel-action="files"><span class="icon-slot" data-icon="folderOpen"></span><span>Files</span></button></div>
+    <div class="bottom-panel-utility" id="bottomPanelUtility" hidden><span class="icon-slot" id="bottomPanelIcon"></span><div><h2 id="bottomPanelUtilityTitle"></h2><p id="bottomPanelDescription"></p></div><button id="bottomPanelAction" type="button" hidden></button></div>
+  </section>
 </div>
 <dialog class="folder-dialog" id="folderDialog">
   <form method="dialog" class="folder-card">

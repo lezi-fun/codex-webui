@@ -18,7 +18,9 @@ async function run(width,height,name){
  await page.waitForSelector('.activity-motion svg');
  await page.waitForSelector('.review-file',{state:'attached'});
  await page.click('.approval-menu-toggle');
- if(width<720)await page.evaluate(()=>document.querySelector('#changesPanel').classList.add('mobile-review-open'));
+ await page.click('#toggleSidePanel');
+ await page.click('[data-side-panel-action="review"]');
+ await page.waitForFunction(()=>!document.querySelector('#reviewPanelContent').hidden);
  await page.waitForSelector('#reviewMode:not([disabled])');
  await page.click('#reviewMode');
  await page.click('#reviewWrap');
@@ -28,11 +30,11 @@ async function run(width,height,name){
   const anim=document.querySelector('.activity-motion svg');
   const waiting=document.querySelector('.activity-summary-copy')?.textContent;
   const menuVisible=!card.querySelector('.approval-menu')?.hidden;
-  return {card:rect('[data-codex-approval-surface]'),composer:rect('.composer'),buttons:[...card.querySelectorAll('button')].map(x=>x.textContent.trim()),commandLines:getComputedStyle(card.querySelector('.approval-command code')).webkitLineClamp,animationSvg:!!anim,reviewFiles:document.querySelectorAll('.review-file').length,reviewAdds:document.querySelector('#reviewStats')?.textContent,waiting,menuVisible,reviewDrawer:document.querySelector('#changesPanel').classList.contains('mobile-review-open'),reviewWidth:rect('#changesPanel')?.width,reviewMode:document.querySelector('#changeList')?.dataset.mode,reviewWrap:document.querySelector('#changeList')?.classList.contains('wrap'),splitRows:document.querySelectorAll('.review-split-row').length,scrollWidth:document.documentElement.scrollWidth,innerWidth};
+  return {card:rect('[data-codex-approval-surface]'),composer:rect('.composer'),buttons:[...card.querySelectorAll('button')].map(x=>x.textContent.trim()),commandLines:getComputedStyle(card.querySelector('.approval-command code')).webkitLineClamp,commandText:card.querySelector('.approval-command code')?.textContent,animationSvg:!!anim,reviewFiles:document.querySelectorAll('.review-file').length,reviewAdds:document.querySelector('#reviewStats')?.textContent,waiting,menuVisible,reviewDrawer:!document.querySelector('#sidePanel').hidden,reviewWidth:rect('#sidePanel')?.width,reviewMode:document.querySelector('#changeList')?.dataset.mode,reviewWrap:document.querySelector('#changeList')?.classList.contains('wrap'),splitRows:document.querySelectorAll('.review-split-row').length,scrollWidth:document.documentElement.scrollWidth,innerWidth};
  });
  await page.screenshot({path:artifact(`${name}.png`),fullPage:false});
  console.log(name,JSON.stringify({...result,errors},null,2));
- if(!result.animationSvg||result.reviewFiles!==1||result.commandLines!=='3'||result.scrollWidth>result.innerWidth||errors.length)throw new Error(`${name} failed`);
+ if(!result.animationSvg||result.reviewFiles!==1||result.commandLines!=='none'||result.commandText!=='bun test tests/codex-surfaces.test.ts'||result.scrollWidth>result.innerWidth||errors.length)throw new Error(`${name} failed`);
  await page.close();
 }
 await run(1280,720,'surfaces-desktop');

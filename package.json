@@ -14,7 +14,7 @@
     "test": "bun run test:unit",
     "test:unit": "bun test tests/ui-core.test.ts tests/rendering.test.ts tests/folders.test.ts tests/codex-icons.test.ts tests/codex-surfaces.test.ts tests/review-service.test.ts tests/profile-service.test.ts tests/profile-security.test.ts tests/server-security.test.ts tests/review-state.test.ts",
     "test:integration": "bun test tests/app-server.integration.test.ts",
-    "test:browser": "bun tests/browser-smoke.mjs && bun tests/mobile-layout.test.mjs && bun tests/surfaces-browser.mjs",
+    "test:browser": "bun tests/browser-smoke.mjs && bun tests/chrome-layout.e2e.mjs && bun tests/review-turn-selection.e2e.mjs && bun tests/theme-colors.e2e.mjs && bun tests/responsive-panels.e2e.mjs && bun tests/summary-scroll.e2e.mjs && bun tests/mobile-layout.test.mjs && bun tests/surfaces-browser.mjs",
     "test:e2e": "bun tests/account-api.e2e.mjs && bun tests/approval-e2e.mjs && bun tests/review-api-e2e.mjs"
   },
   "dependencies": {

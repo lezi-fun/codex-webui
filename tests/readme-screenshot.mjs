@@ -33,11 +33,14 @@ await page.evaluate(async()=>{
  api.notify('turn/diff/updated',{turnId:'readme-turn',threadId:'readme-thread',diff:'diff --git a/src/settings.ts b/src/settings.ts\n--- a/src/settings.ts\n+++ b/src/settings.ts\n@@ -1,3 +1,5 @@\n export const settings = {\n-  compact: false,\n+  compact: true,\n+  responsive: true,\n+  theme: "system",\n };\n'});
  await api.request({id:'readme-approval',method:'item/commandExecution/requestApproval',params:{threadId:'readme-thread',turnId:'readme-turn',itemId:'readme-command',command:'bun run check',cwd:demo,reason:'Verify the browser and server bundles before finishing.',proposedExecpolicyAmendment:['bun','run','check']}});
  document.querySelector('.approval-title').textContent='Allow Codex to run this command?';
- document.body.classList.remove('changes-hidden');
  api.renderChanges();
 });
 await page.waitForSelector('[data-codex-approval-surface]');
-await page.waitForSelector('.review-file');
+await page.waitForSelector('.review-file',{state:'attached'});
+await page.click('#toggleSidePanel');
+await page.click('[data-side-panel-action="review"]');
+await page.waitForFunction(()=>!document.querySelector('#reviewPanelContent').hidden);
+await page.waitForSelector('.review-file',{state:'visible'});
 await page.screenshot({path:output,fullPage:false});
 console.log(output);
 await browser.close();
