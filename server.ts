@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join, resolve, extname } from "node:path";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { createServer } from "node:http";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { networkInterfaces } from "node:os";
 import { WebSocketServer, WebSocket } from "ws";
 import { defaultBrowseRoots, isDirectory, listFolders, resolveBrowsePath } from "./folder-service.js";
@@ -40,6 +40,7 @@ const defaultCwd = resolve(process.env.CODEX_WEBUI_CWD || import.meta.dir);
 const browseRoots = defaultBrowseRoots(homeDir);
 const reviewRoots = [resolve(process.env.CODEX_WEBUI_REVIEW_ROOT || defaultCwd)];
 const clients = new Set<WebSocket>();
+const sseClients = new Set<ServerResponse>();
 const terminalSessions = new Map<WebSocket, ReturnType<typeof createTerminalSession>>();
 const pending = new Map<number, { resolve: (value: any) => void; reject: (error: Error) => void }>();
 const reviewDiffs = new ReviewDiffStore();
@@ -168,29 +169,50 @@ function handleCodex(message: any) {
 function broadcast(data: any) {
   const text = JSON.stringify(data);
   for (const client of clients) if (client.readyState === WebSocket.OPEN) client.send(text);
+  for (const client of sseClients) if (!client.writableEnded) client.write(`data: ${text}\n\n`);
+}
+
+async function dispatchBrowserMessage(message: any) {
+  const id = message?.id;
+  if (message?.type === "rpc") {
+    if (!isAllowedBrowserRpcMethod(message.method)) throw new Error("RPC method is not available to browser clients");
+    return { type: "rpc/result", id, result: await request(message.method, message.params || {}) };
+  }
+  if (message?.type === "codex/response") {
+    if (!Number.isSafeInteger(message.requestId)) throw new Error("Invalid Codex request id");
+    sendRaw({ id: message.requestId, result: message.result });
+    return { type: "ack" };
+  }
+  if (message?.type === "codex/error") {
+    if (!Number.isSafeInteger(message.requestId)) throw new Error("Invalid Codex request id");
+    sendRaw({ id: message.requestId, error: message.error });
+    return { type: "ack" };
+  }
+  if (message?.type === "ping") return { type: "pong" };
+  throw new Error("Unsupported browser bridge message");
 }
 
 async function handleClient(client: WebSocket, message: any) {
-  const id = message.id;
-  try {
-    if (message.type === "rpc") {
-      if (!isAllowedBrowserRpcMethod(message.method)) throw new Error("RPC method is not available to browser clients");
-      const result = await request(message.method, message.params || {});
-      client.send(JSON.stringify({ type: "rpc/result", id, result }));
-      return;
-    }
-    if (message.type === "codex/response") {
-      sendRaw({ id: message.requestId, result: message.result });
-      return;
-    }
-    if (message.type === "codex/error") {
-      sendRaw({ id: message.requestId, error: message.error });
-      return;
-    }
-    if (message.type === "ping") client.send(JSON.stringify({ type: "pong" }));
-  } catch (error) {
-    client.send(JSON.stringify({ type: "rpc/error", id, error: error instanceof Error ? error.message : String(error) }));
-  }
+  try { client.send(JSON.stringify(await dispatchBrowserMessage(message))); }
+  catch (error) { client.send(JSON.stringify({ type: "rpc/error", id: message?.id, error: error instanceof Error ? error.message : String(error) })); }
+}
+
+function readJsonBody(req: IncomingMessage, maxBytes = 256_000) {
+  return new Promise<any>((resolvePromise, reject) => {
+    let body = "", tooLarge = false;
+    req.setEncoding("utf8");
+    req.on("data", chunk => {
+      if (tooLarge) return;
+      if (Buffer.byteLength(body) + Buffer.byteLength(chunk) > maxBytes) { tooLarge = true; return; }
+      body += chunk;
+    });
+    req.on("error", reject);
+    req.on("end", () => {
+      if (tooLarge) return reject(new Error("Bridge payload too large"));
+      try { resolvePromise(JSON.parse(body || "{}")); }
+      catch { reject(new Error("Invalid JSON payload")); }
+    });
+  });
 }
 
 const mime: Record<string, string> = {
@@ -261,6 +283,46 @@ const server = createServer(async (req, res) => {
       }
     }
     unauthorizedResponse(res);
+    return;
+  }
+  if (url.pathname === "/api/events") {
+    if (req.method !== "GET") {
+      res.writeHead(405, { "content-type": "application/json; charset=utf-8", allow: "GET" });
+      res.end(JSON.stringify({ error: "Method not allowed" }));
+      return;
+    }
+    res.writeHead(200, {
+      "content-type": "text/event-stream; charset=utf-8",
+      "cache-control": "no-cache, no-transform",
+      connection: "keep-alive",
+      "x-accel-buffering": "no",
+      "x-content-type-options": "nosniff",
+    });
+    res.flushHeaders?.();
+    res.write("retry: 1000\n\n");
+    sseClients.add(res);
+    res.write(`data: ${JSON.stringify({ type: "bridge/status", status: connected ? "connected" : "connecting" })}\n\n`);
+    req.on("close", () => sseClients.delete(res));
+    return;
+  }
+  if (url.pathname === "/api/rpc" || url.pathname === "/api/codex/respond") {
+    if (req.method !== "POST") {
+      res.writeHead(405, { "content-type": "application/json; charset=utf-8", allow: "POST" });
+      res.end(JSON.stringify({ error: "Method not allowed" }));
+      return;
+    }
+    try {
+      const payload = await readJsonBody(req);
+      const message = url.pathname === "/api/rpc"
+        ? { type: "rpc", id: payload.id, method: payload.method, params: payload.params || {} }
+        : { type: payload.error ? "codex/error" : "codex/response", requestId: payload.requestId, result: payload.result, error: payload.error };
+      const reply = await dispatchBrowserMessage(message);
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });
+      res.end(JSON.stringify(reply));
+    } catch (error) {
+      res.writeHead(400, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });
+      res.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }));
+    }
     return;
   }
   if (url.pathname === "/api/health") {
@@ -416,6 +478,11 @@ const server = createServer(async (req, res) => {
   res.end(readFileSync(file));
 });
 
+const sseKeepalive = setInterval(() => {
+  for (const client of sseClients) if (!client.writableEnded) client.write(": keepalive\n\n");
+}, 25_000);
+sseKeepalive.unref();
+
 const wss = new WebSocketServer({ noServer: true });
 const terminalWss = new WebSocketServer({ noServer: true });
 server.on("upgrade", (req, socket, head) => {
@@ -515,10 +582,13 @@ function shutdown() {
   connected = false;
   if (restartTimer) clearTimeout(restartTimer);
   restartTimer = null;
+  clearInterval(sseKeepalive);
   for (const item of pending.values()) item.reject(new Error("Codex WebUI is shutting down"));
   pending.clear();
   for (const client of clients) client.terminate();
   clients.clear();
+  for (const client of sseClients) client.end();
+  sseClients.clear();
   wss.close();
   for (const [client, terminal] of terminalSessions) { terminal.kill(); client.terminate(); }
   terminalSessions.clear();

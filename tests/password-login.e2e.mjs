@@ -24,6 +24,7 @@ await page.goto(`http://${lanAddress}:${port}/`,{waitUntil:'domcontentloaded'});
 await page.waitForSelector('#passwordGate:not([hidden])',{timeout:30_000});
 const preAuth={
   health:await fetch(`http://${lanAddress}:${port}/api/health`).then(response=>response.status),
+  events:await fetch(`http://${lanAddress}:${port}/api/events`).then(response=>response.status),
   bundle:await fetch(`http://${lanAddress}:${port}/app.bundle.js`).then(response=>response.status),
   appLoaded:await page.evaluate(()=>Boolean(globalThis.__codexWebuiDebug)),
 };
@@ -46,9 +47,10 @@ await page.locator('#passwordLoginButton').click();
 await page.waitForSelector('#passwordGate',{state:'hidden'});
 const cookie=(await context.cookies()).find(item=>item.name==='codex_webui_session');
 const health=await page.evaluate(()=>fetch('/api/health').then(response=>({status:response.status,json:response.json()})).then(async value=>({status:value.status,json:await value.json})));
+const sse=await page.evaluate(()=>new Promise((resolve,reject)=>{const events=new EventSource('/api/events'),timer=setTimeout(()=>{events.close();reject(new Error('SSE did not emit an initial bridge status'))},10_000);events.onmessage=event=>{clearTimeout(timer);events.close();resolve(JSON.parse(event.data))};events.onerror=()=>{clearTimeout(timer);events.close();reject(new Error('SSE connection failed after password login'))}}));
 const bundle=await fetch(`http://${lanAddress}:${port}/app.bundle.js`,{headers:{cookie:`codex_webui_session=${encodeURIComponent(cookie?.value||'')}`}}).then(response=>response.status);
-console.log(JSON.stringify({preAuth,initial,wrong,cookie:{httpOnly:cookie?.httpOnly,sameSite:cookie?.sameSite,hasValue:Boolean(cookie?.value)},health,bundle},null,2));
+console.log(JSON.stringify({preAuth,initial,wrong,cookie:{httpOnly:cookie?.httpOnly,sameSite:cookie?.sameSite,hasValue:Boolean(cookie?.value)},health,sse,bundle},null,2));
 await browser.close();
 server.kill('SIGTERM');
 await new Promise(resolve=>server.once('exit',resolve));
-if(preAuth.health!==401||preAuth.bundle!==401||preAuth.appLoaded||!initial.gate||initial.app!=='true'||!initial.mark||initial.input!=='password'||initial.button!=='Log in'||initial.body||!wrong?.includes('Incorrect password')||!cookie?.httpOnly||cookie?.sameSite!=='Strict'||health.status!==200||health.json?.ok!==true||bundle!==200)process.exit(1);
+if(preAuth.health!==401||preAuth.events!==401||preAuth.bundle!==401||preAuth.appLoaded||!initial.gate||initial.app!=='true'||!initial.mark||initial.input!=='password'||initial.button!=='Log in'||initial.body||!wrong?.includes('Incorrect password')||!cookie?.httpOnly||cookie?.sameSite!=='Strict'||health.status!==200||health.json?.ok!==true||sse?.type!=='bridge/status'||!['connecting','connected'].includes(sse.status)||bundle!==200)process.exit(1);

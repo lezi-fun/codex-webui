@@ -72,7 +72,7 @@ beforeAll(async () => {
   proc = spawn({
     cmd: ["bun", "run", "server.ts"],
     cwd: ROOT,
-    env: { ...process.env, PORT: String(port), HOST: "127.0.0.1", CODEX_WEBUI_ACCESS_TOKEN: "integration-access-token" },
+    env: { ...process.env, PORT: String(port), HOST: "127.0.0.1", CODEX_WEBUI_PASSWORD: "", CODEX_WEBUI_ACCESS_TOKEN: "integration-access-token" },
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -200,6 +200,7 @@ describe("Codex WebUI app-server bridge", () => {
     const turnId = turn.turn.id;
     const completed = await waitFor(() => notifications.find((n) => n.method === "turn/completed" && n.params.threadId === threadId && n.params.turn.id === turnId), 60_000);
     const deltas = notifications.filter((n) => n.method === "item/agentMessage/delta" && n.params.threadId === threadId && n.params.turnId === turnId).map((n) => n.params.delta).join("");
+    if (completed.params.turn.status !== "completed") throw new Error(`Real turn failed: ${JSON.stringify({ status: completed.params.turn.status, error: completed.params.turn.error || completed.params.turn.failure || null })}`);
     expect(completed.params.turn.status).toBe("completed");
     expect(deltas).toContain("WEBUI_OK");
   }, 70_000);
