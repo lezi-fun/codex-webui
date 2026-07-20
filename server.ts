@@ -221,7 +221,13 @@ const mime: Record<string, string> = {
 };
 
 const server = createServer(async (req, res) => {
-  const url = new URL(req.url || "/", "http://localhost");
+  let url: URL;
+  try { url = new URL(req.url || "/", "http://localhost"); }
+  catch {
+    res.writeHead(400, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });
+    res.end(JSON.stringify({ error: "Invalid request URL" }));
+    return;
+  }
   const loginAssets = new Set(["/", "/index.html", "/style.css", "/auth-bootstrap.js", "/codex-brand.js"]);
   if (url.pathname === "/api/auth/status") {
     const authenticated = isAuthorizedHttpRequest(req, authSecret, localhostOnly);
