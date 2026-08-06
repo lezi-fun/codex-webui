@@ -9,6 +9,13 @@ await page.goto(process.env.CODEX_WEBUI_TEST_URL||'http://127.0.0.1:8899',{waitU
 await page.waitForFunction(()=>globalThis.__codexWebuiDebug?.state?.config?.defaultCwd);
 await page.click('#newTask');
 await page.waitForFunction(()=>document.querySelector('#modelLabel')?.textContent?.trim()&&!/loading/i.test(document.querySelector('#modelLabel').textContent));
+const modelFilter=await page.evaluate(()=>{
+  const api=globalThis.__codexWebuiDebug;
+  const mixed=[...api.state.models,{model:'o3',displayName:'o3'}];
+  api.state.models=api.filterAppModels(mixed);
+  api.renderModels();
+  return {models:api.state.models.map(model=>model.model),hasO3:api.state.models.some(model=>model.model==='o3')};
+});
 
 const home=await page.evaluate(()=>{
   const composer=document.querySelector('.composer');
@@ -55,7 +62,7 @@ await page.click('#modelButton');
 const solEfforts=await page.locator('#modelMenu .model-effort-row').allTextContents();
 await page.keyboard.press('Escape');
 await page.screenshot({path:artifact('composer-native.png'),fullPage:false});
-console.log(JSON.stringify({home,modelMain,effortSelection,modelSubmenu,lunaEfforts,solEfforts,errors},null,2));
+console.log(JSON.stringify({home,modelFilter,modelMain,effortSelection,modelSubmenu,lunaEfforts,solEfforts,errors},null,2));
 await browser.close();
 
 const expected=['add','project','approval','model','dictation','send'];
@@ -67,6 +74,8 @@ if(errors.length
   ||JSON.stringify(home.controls)!==JSON.stringify(expected)
   ||!home.nativeTrigger
   ||/^GPT-/i.test(home.triggerText||'')
+  ||modelFilter.hasO3
+  ||modelFilter.models.some(model=>!/^gpt(?:[-_.\s]|$)/i.test(model))
   ||home.trigger.border!=='0px'
   ||modelMain.title!=='Reasoning'
   ||modelMain.effortRows.length<1
@@ -77,6 +86,9 @@ if(errors.length
   ||modelSubmenu.title!=='Model'
   ||modelSubmenu.rows.length<1
   ||!modelSubmenu.back
+  ||modelMain.effortRows.includes('Light')
+  ||lunaEfforts.includes('Light')
+  ||solEfforts.includes('Light')
   ||lunaEfforts.includes('Ultra')
   ||!lunaEfforts.includes('Max')
   ||!solEfforts.includes('Ultra')

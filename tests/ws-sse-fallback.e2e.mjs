@@ -35,6 +35,7 @@ function installFailingBridge(page, mode) {
 }
 
 const browser = await chromium.launch(launchOptions());
+const base = process.env.CODEX_WEBUI_TEST_URL || 'http://127.0.0.1:8899';
 const results = [];
 try {
   for (const mode of ['error-close', 'first-event-timeout']) {
@@ -45,7 +46,7 @@ try {
       if (message.type() === 'error' && !message.text().includes('404')) errors.push(message.text());
     });
     await installFailingBridge(page, mode);
-    await page.goto(`http://127.0.0.1:8899/?ws-failure=${mode}`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${base}/?ws-failure=${mode}`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => {
       const state = globalThis.__codexWebuiDebug?.state;
       return state?.transport === 'sse' && state.connected && state.models.length > 0;

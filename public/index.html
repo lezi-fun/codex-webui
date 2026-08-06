@@ -13,8 +13,11 @@
 <section class="password-gate" id="passwordGate" aria-label="Codex WebUI login" hidden>
   <form class="password-login" id="passwordLoginForm">
     <span id="passwordCodexMark"></span>
+    <h1 id="passwordTitle">Log in</h1>
     <label class="sr-only" for="passwordInput">Password</label>
     <input id="passwordInput" type="password" placeholder="Password" autocomplete="current-password" required>
+    <label class="sr-only" for="passwordConfirmInput">Confirm password</label>
+    <input id="passwordConfirmInput" type="password" placeholder="Confirm password" autocomplete="new-password" required hidden>
     <div class="password-error" id="passwordError" role="alert" hidden></div>
     <button id="passwordLoginButton" type="submit">Log in</button>
   </form>
@@ -24,7 +27,7 @@
     <div class="window-brand"><span id="windowCodexMark"></span><strong>Codex</strong></div>
     <div class="thread-heading"><span id="threadTitle">New task</span><span id="threadPath"></span></div>
     <div class="top-actions">
-      <button class="icon-button" id="toggleSidebar" title="Toggle sidebar"><span class="icon-slot" data-icon="panelLeft"></span></button>
+      <button class="icon-button" id="toggleSidebar" title="Toggle sidebar" aria-controls="sidebar" aria-expanded="true" aria-pressed="true"><span class="icon-slot" data-icon="panelLeft"></span></button>
       <button class="icon-button" id="toggleBottomPanel" title="Toggle terminal panel" aria-controls="bottomPanel" aria-expanded="false" aria-pressed="false"><span class="icon-slot" data-icon="panelBottom"></span></button>
       <button class="icon-button" id="toggleSummaryPanel" title="Toggle summary" aria-controls="summaryPanel" aria-expanded="false" aria-pressed="false"><span class="icon-slot" data-icon="info"></span></button>
       <button class="icon-button" id="toggleSidePanel" title="Toggle side panel" aria-controls="sidePanel" aria-expanded="false" aria-pressed="false"><span class="icon-slot" data-icon="panelRight"></span></button>
@@ -33,8 +36,10 @@
 
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-top">
-      <button class="sidebar-row new-task" id="newTask"><span class="icon-slot" data-icon="plus"></span><span>New task</span><kbd>⌘K</kbd></button>
-      <label class="sidebar-row search-box"><span class="icon-slot" data-icon="search"></span><input id="threadSearch" type="search" placeholder="Search tasks"></label>
+      <button class="sidebar-product" id="productModeButton" type="button" aria-label="Switch mode, current mode: Codex"><span class="sidebar-product-mark" id="sidebarCodexMark"></span><strong>Codex</strong><span class="icon-slot chevron" data-icon="chevronDown"></span></button>
+      <button class="sidebar-row new-task" id="newTask"><span class="icon-slot" data-icon="plus"></span><span>New chat</span><kbd>⌘K</kbd></button>
+      <label class="sidebar-row search-box"><span class="icon-slot" data-icon="search"></span><input id="threadSearch" type="search" placeholder="Search chats"></label>
+      <div class="sidebar-section-label">Chats</div>
       <button class="sidebar-row project-button" id="projectButton">
         <span class="project-glyph icon-slot" data-icon="folderOpen"></span>
         <span class="project-copy"><strong id="projectName">codex-webui</strong><span id="projectPath">~/projects/codex-webui</span></span>
@@ -44,12 +49,20 @@
     <div class="thread-list" id="threadList"><div class="list-state">Connecting to Codex…</div></div>
     <div class="sidebar-footer">
       <div class="account-menu" id="accountMenu" hidden>
-        <div class="account-menu-identity"><strong id="accountMenuName">Settings</strong></div>
-        <div class="account-menu-meta"><span id="accountPlan"></span><span><span class="status-dot" id="statusDot"></span><span id="statusText">Connecting</span></span></div>
+        <div class="account-menu-identity"><span class="account-menu-avatar account-initials" id="accountMenuAvatar">?</span><span><strong id="accountMenuName">Settings</strong><small id="accountMenuSubtitle"></small></span></div>
+        <div class="account-menu-separator"></div>
+        <button type="button" class="account-menu-row" id="accountProfile"><span class="icon-slot" data-icon="userRound"></span><span>Profile</span></button>
+        <button type="button" class="account-menu-row" id="accountUsage"><span class="icon-slot" data-icon="info"></span><span>Usage</span></button>
+        <button type="button" class="account-menu-row" id="accountSettings"><span class="icon-slot" data-icon="wrench"></span><span>Settings</span></button>
+        <button type="button" class="account-menu-row" id="accountShortcuts"><span class="icon-slot" data-icon="command"></span><span>Keyboard shortcuts</span></button>
+        <div class="account-menu-separator"></div>
+        <div class="account-menu-status"><span class="status-dot" id="statusDot"></span><span id="statusText">Connecting</span></div>
+        <button type="button" class="account-menu-row" id="accountLogout"><span class="icon-slot" data-icon="logOut"></span><span>Log out</span></button>
       </div>
       <button class="account-button" id="accountButton" type="button" aria-expanded="false" aria-controls="accountMenu">
         <span class="account-avatar account-initials" id="accountAvatar">?</span>
-        <span id="accountName">Settings</span>
+        <span class="account-button-copy"><strong id="accountName">Settings</strong><small id="accountFooterMeta"></small></span>
+        <span class="icon-slot account-chevron" data-icon="chevronDown"></span>
       </button>
       <span id="threadSource" hidden>local</span>
     </div>
@@ -71,7 +84,12 @@
           <div class="composer-left">
             <button type="button" class="composer-circle-button add-control" data-composer-control="add" title="Attach files and folders" aria-label="Attach files and folders"><span class="icon-slot" data-icon="plus"></span></button>
             <button type="button" class="composer-text-button composer-project-control" id="composerProjectButton" data-composer-control="project" aria-label="Project"><span class="icon-slot" data-icon="folderOpen"></span><span id="composerProjectLabel">codex-webui</span><span class="icon-slot chevron" data-icon="chevronDown"></span></button>
-            <button type="button" class="composer-text-button approval-control" id="modeButton" data-composer-control="approval" title="Approval policy"><span class="icon-slot" data-icon="shield"></span><span class="control-label">Request approval</span></button>
+            <div class="permission-picker" id="permissionPicker" data-composer-control="approval">
+              <button type="button" class="composer-text-button approval-control" id="modeButton" title="Change permissions" aria-haspopup="menu" aria-expanded="false"><span class="icon-slot" data-icon="shield"></span><span class="control-label">Ask for approval</span><span class="icon-slot chevron" data-icon="chevronDown"></span></button>
+              <div class="permission-menu" id="permissionMenu" role="menu" aria-label="How should Codex actions be approved?" hidden>
+                <div class="permission-options" id="permissionOptions"></div>
+              </div>
+            </div>
             <div class="model-picker composer-model-control" id="modelPicker" data-composer-control="model">
               <button type="button" class="composer-text-button model-trigger" id="modelButton" data-codex-intelligence-trigger aria-haspopup="menu" aria-expanded="false"><span id="modelLabel">Loading models…</span><span id="effortLabel">Medium</span><span class="icon-slot chevron" data-icon="chevronDown"></span></button>
               <div class="model-menu" id="modelMenu" role="menu" hidden></div>
@@ -114,6 +132,41 @@
         <div class="change-summary"><span id="changeSummary">No changes yet</span><span class="review-stats" id="reviewStats"></span><button class="icon-button small" title="Toggle word wrap" id="reviewWrap"><span class="icon-slot" data-icon="wrapText"></span></button><button class="icon-button small" title="Collapse all diffs" id="reviewExpand"><span class="icon-slot" data-icon="chevronsUp"></span></button><button class="icon-button small" title="Switch to split diff" id="reviewMode"><span class="icon-slot" data-icon="columns2"></span></button><button class="icon-button small" title="Undo changes" id="reviewPatch"><span class="icon-slot" data-icon="undo"></span></button></div>
         <div class="change-list" id="changeList"><div class="panel-empty">Changes made by Codex will appear here.</div></div>
       </div>
+    </section>
+    <section class="side-panel-browser" id="browserPanel" role="tabpanel" hidden aria-label="Browser">
+      <div class="browser-toolbar">
+        <div class="browser-nav" aria-label="Browser navigation">
+          <button class="icon-button small" id="browserBack" type="button" title="Go back" aria-label="Go back" disabled><span class="icon-slot" data-icon="chevronLeft"></span></button>
+          <button class="icon-button small" id="browserForward" type="button" title="Go forward" aria-label="Go forward" disabled><span class="icon-slot" data-icon="chevronRight"></span></button>
+          <button class="icon-button small" id="browserRefresh" type="button" title="Refresh page" aria-label="Refresh page" disabled><span class="icon-slot" data-icon="refreshCw"></span></button>
+        </div>
+        <form class="browser-address-form" id="browserAddressForm">
+          <span class="icon-slot" data-icon="globe" aria-hidden="true"></span>
+          <label class="sr-only" for="browserUrl">Browser URL</label>
+          <input id="browserUrl" type="text" inputmode="url" autocomplete="url" spellcheck="false" placeholder="Enter URL" aria-describedby="browserStatusText">
+          <button class="browser-go" type="submit" title="Go to URL" aria-label="Go to URL"><span class="icon-slot" data-icon="arrowUp"></span></button>
+        </form>
+        <a class="icon-button small browser-external" id="browserOpenExternal" title="Open in new tab" aria-label="Open in new tab" target="_blank" rel="noopener noreferrer" hidden><span class="icon-slot" data-icon="monitor"></span></a>
+      </div>
+      <div class="browser-status" id="browserStatus" role="status" aria-live="polite">
+        <span class="browser-status-dot" aria-hidden="true"></span><span id="browserStatusText">Ready</span>
+      </div>
+      <div class="browser-frame-shell" id="browserFrameShell">
+        <div class="browser-empty" id="browserEmpty"><span class="icon-slot" data-icon="globe"></span><strong>Enter a URL to browse</strong><span>Pages stay in their original site context. Some sites do not allow embedding.</span></div>
+        <iframe id="browserFrame" title="Embedded browser page" loading="eager" referrerpolicy="no-referrer-when-downgrade" sandbox="allow-downloads allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-presentation allow-scripts" hidden></iframe>
+        <div class="browser-loading" id="browserLoading" hidden><span class="icon-slot" data-icon="loaderCircle"></span><span>Loading page…</span></div>
+      </div>
+      <div class="browser-notice" id="browserNotice" role="alert" hidden>
+        <span class="icon-slot" data-icon="triangleAlert"></span>
+        <div><strong id="browserNoticeTitle">Page could not be embedded</strong><p id="browserNoticeDescription"></p></div>
+        <a id="browserNoticeExternal" target="_blank" rel="noopener noreferrer" hidden>Open externally</a>
+      </div>
+    </section>
+    <section class="side-panel-terminal" id="sideTerminalPanel" role="tabpanel" hidden aria-label="Terminal">
+      <div class="terminal-host side-terminal-host" id="sideTerminalHost" data-connected="false"></div>
+    </section>
+    <section class="side-task-panel" id="sideTaskPanel" role="tabpanel" hidden aria-label="Side tasks">
+      <div class="side-task-list" id="sideTaskList"><div class="side-task-empty">Side tasks started by this chat will appear here.</div></div>
     </section>
     <section class="side-panel-utility" id="utilityPanelContent" role="tabpanel" hidden>
       <div class="side-panel-utility-empty"><span class="icon-slot" id="utilityPanelIcon"></span><h2 id="utilityPanelTitle"></h2><p id="utilityPanelDescription"></p><button id="utilityPanelAction" type="button" hidden></button></div>
@@ -164,6 +217,66 @@
     <div class="folder-list" id="folderList"><div class="list-state">Loading folders…</div></div>
     <div class="folder-actions"><span id="folderSelection">No folder selected</span><button value="cancel" class="folder-cancel">Cancel</button><button type="button" class="folder-confirm" id="folderConfirm" disabled>Use this folder</button></div>
   </form>
+</dialog>
+<dialog class="settings-dialog" id="settingsDialog" aria-labelledby="settingsTitle">
+  <div class="settings-card">
+    <aside class="settings-nav" aria-label="Settings">
+      <div class="settings-nav-heading"><strong id="settingsTitle">Settings</strong><button class="settings-nav-close icon-button" id="closeSettingsNav" type="button" aria-label="Close settings"><span class="icon-slot" data-icon="x"></span></button></div>
+      <label class="settings-search"><span class="icon-slot" data-icon="search"></span><input id="settingsSearch" type="search" aria-label="Search settings" placeholder="Search settings…" autocomplete="off"><button class="settings-search-clear icon-button small" id="clearSettingsSearch" type="button" aria-label="Clear settings search" hidden><span class="icon-slot" data-icon="x"></span></button></label>
+      <div class="settings-nav-scroll" id="settingsNavScroll">
+        <section class="settings-nav-group" data-settings-group="personal"><h2>Personal</h2><button type="button" class="active" data-settings-page="general">General</button><button type="button" data-settings-page="appearance">Appearance</button><button type="button" data-settings-page="agent">Configuration</button><button type="button" data-settings-page="account">Account</button><button type="button" data-settings-page="keyboard">Keyboard shortcuts</button></section>
+        <section class="settings-nav-group" data-settings-group="integrations"><h2>Integrations</h2><button type="button" data-settings-page="plugins-settings">Plugins</button><button type="button" data-settings-page="skills-settings">Skills</button><button type="button" data-settings-page="browser-use">Browser</button><button type="button" data-settings-page="computer-use">Computer use</button></section>
+        <section class="settings-nav-group" data-settings-group="coding"><h2>Coding</h2><button type="button" data-settings-page="connections">Connections</button><button type="button" data-settings-page="cloud-settings">Cloud preferences</button><button type="button" data-settings-page="cloud-environments">Cloud environments</button><button type="button" data-settings-page="code-review">Code review</button><button type="button" data-settings-page="git-settings">Git</button><button type="button" data-settings-page="hooks-settings">Hooks</button><button type="button" data-settings-page="worktrees">Worktrees</button></section>
+        <section class="settings-nav-group" data-settings-group="archived"><h2>Archived</h2><button type="button" data-settings-page="data-controls">Archived chats</button></section>
+        <div class="settings-nav-empty" id="settingsNavEmpty" hidden>No results found</div>
+      </div>
+    </aside>
+    <main class="settings-content" id="settingsContent">
+      <div class="settings-toolbar"><button class="settings-mobile-back icon-button" id="settingsMobileBack" type="button" aria-label="Back to settings"><span class="icon-slot" data-icon="chevronLeft"></span></button><strong id="settingsPageTitle">General</strong><button class="icon-button" id="closeSettings" type="button" aria-label="Close settings"><span class="icon-slot" data-icon="x"></span></button></div>
+      <section class="settings-page" data-settings-content="general">
+        <div class="settings-section-title">Permissions</div>
+        <label class="settings-row settings-toggle-row" id="settingsAutoReviewRow">
+          <span><strong>Auto-review</strong><small>Show “Approve for me” in the composer</small></span>
+          <input id="settingsAutoReviewToggle" type="checkbox">
+          <span class="settings-switch" aria-hidden="true"></span>
+        </label>
+        <label class="settings-row settings-toggle-row" id="settingsFullAccessRow">
+          <span><strong>Full access</strong><small>Show unrestricted access in the composer</small></span>
+          <input id="settingsFullAccessToggle" type="checkbox">
+          <span class="settings-switch" aria-hidden="true"></span>
+        </label>
+        <div class="settings-row"><span><strong>Selected mode</strong><small>Permission mode used for new turns</small></span><span id="settingsPermissionValue">Ask for approval</span></div>
+        <div class="settings-row"><span><strong>Project</strong><small>Working folder used for new chats</small></span><span id="settingsProjectValue"></span></div>
+      </section>
+      <section class="settings-page" data-settings-content="account" hidden><div class="settings-account-identity"><span class="account-avatar account-initials" id="settingsAccountAvatar">?</span><span><strong id="settingsAccountName">Settings</strong><small id="settingsAccountMeta"></small></span></div></section>
+      <section class="settings-page" data-settings-content="keyboard" hidden><div class="shortcut-row"><span>New chat</span><kbd>⌘ K</kbd></div><div class="shortcut-row"><span>Toggle sidebar</span><kbd>⌘ B</kbd></div><div class="shortcut-row"><span>Toggle bottom panel</span><kbd>⌘ J</kbd></div></section>
+      <section class="settings-page" data-settings-content="placeholder" hidden><div class="settings-page-intro"><strong id="settingsPlaceholderTitle"></strong><small id="settingsPlaceholderDescription"></small></div><div id="settingsPlaceholderRows"></div></section>
+    </main>
+  </div>
+</dialog>
+<dialog class="permission-confirm-dialog" id="fullAccessDialog" aria-labelledby="fullAccessTitle">
+  <form method="dialog" class="permission-confirm-card">
+    <div class="permission-confirm-head"><span class="icon-slot" data-icon="triangleAlert"></span><div><strong id="fullAccessTitle">Turn on Full Access?</strong><p>Codex will be able to run commands, use the internet, and create and edit files anywhere on this computer without your permission.</p></div></div>
+    <div class="permission-risk-list">
+      <div><span class="icon-slot" data-icon="file"></span><span><strong>Files and folders</strong><small>Read, create, modify, upload, or delete files anywhere on this computer</small></span></div>
+      <div><span class="icon-slot" data-icon="terminal"></span><span><strong>Terminal commands</strong><small>Run commands, install software, and change system settings</small></span></div>
+      <div><span class="icon-slot" data-icon="globe"></span><span><strong>Internet and connected apps</strong><small>Access websites, send data, and use enabled plugins</small></span></div>
+    </div>
+    <div class="permission-confirm-actions"><button value="cancel">Cancel</button><button type="button" class="danger" id="confirmFullAccess">Confirm</button></div>
+  </form>
+</dialog>
+<dialog class="image-viewer" id="imageViewer" aria-labelledby="imageViewerTitle">
+  <div class="image-viewer-card">
+    <div class="image-viewer-toolbar">
+      <div class="image-viewer-heading"><strong id="imageViewerTitle">Image</strong><span id="imageViewerPath"></span></div>
+      <a class="image-viewer-original" id="imageViewerOriginal" target="_blank" rel="noopener noreferrer">Open original</a>
+      <button class="icon-button" id="closeImageViewer" type="button" aria-label="Close image viewer"><span class="icon-slot" data-icon="x"></span></button>
+    </div>
+    <div class="image-viewer-stage">
+      <img id="imageViewerImage" alt="">
+      <div class="image-viewer-error" id="imageViewerError" hidden>Image could not be loaded.</div>
+    </div>
+  </div>
 </dialog>
 <div class="toast" id="toast"></div>
 </body>

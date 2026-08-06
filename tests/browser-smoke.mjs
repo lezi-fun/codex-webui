@@ -3,7 +3,7 @@ import { artifact, launchOptions } from './browser-runtime.mjs';
 const browser=await chromium.launch(launchOptions());
 const page=await browser.newPage({viewport:{width:1280,height:720}});
 const errors=[];page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('404 (Not Found)'))errors.push(m.text())});page.on('pageerror',e=>errors.push(e.message));
-await page.goto('http://127.0.0.1:8899',{waitUntil:'networkidle'});
+await page.goto(process.env.CODEX_WEBUI_TEST_URL||'http://127.0.0.1:8899',{waitUntil:'networkidle'});
 await page.waitForSelector('#newTask');
 await page.click('#newTask');
 const dialogAfterNewTask=await page.locator('#folderDialog').evaluate(e=>e.open);
@@ -19,7 +19,11 @@ const workspaceName=await page.locator('#projectName').textContent();
 await page.click('#toggleSummaryPanel');
 await page.waitForFunction(()=>!document.querySelector('#summaryPanel').hidden);
 await page.click('#projectButton');
-await page.waitForSelector('#folderDialog[open] .folder-item');
+await page.waitForFunction(()=>{const dialog=document.querySelector('#folderDialog');return dialog?.open&&(dialog.querySelector('.folder-item')||dialog.querySelector('.list-state')?.textContent?.includes('No subfolders'))});
+if(!await page.locator('#folderDialog .folder-item').count()){
+  await page.click('#folderUp');
+  await page.waitForSelector('#folderDialog[open] .folder-item');
+}
 await page.click('#folderDialog .folder-item');
 await page.click('#folderConfirm');
 const nextWorkspaceName=await page.locator('#projectName').textContent();
