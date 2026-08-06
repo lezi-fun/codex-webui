@@ -15,7 +15,12 @@ await page.evaluate(()=>{
   const api=globalThis.__codexWebuiDebug;
   api.renderAccount({type:'chatgpt',displayName:'Desktop User',avatarUrl:null,planType:'plus',initials:'DU'});
   api.setPermissionProfiles([
+    {id:':read-only',description:null,allowed:true},
+    {id:':workspace',description:null,allowed:true},
+    {id:':danger-full-access',description:null,allowed:true},
+    {id:'custom',description:'Reserved fixed mode',allowed:true},
     {id:'team-safe',description:'Team workspace profile',allowed:true},
+    {id:'TEAM-SAFE',description:'Duplicate managed profile',allowed:true},
     {id:'managed-blocked',description:'Managed profile',allowed:false},
   ]);
 });
@@ -53,7 +58,6 @@ await page.click('[data-settings-page="browser-use"]');
 await page.screenshot({path:'/tmp/codex-webui-settings-shell.png'});
 await page.click('#clearSettingsSearch');
 await page.click('[data-settings-page="general"]');
-await page.click('#settingsAutoReviewRow .settings-switch');
 const settings=await page.evaluate(()=>({
   open:document.querySelector('#settingsDialog').open,
   title:document.querySelector('#settingsTitle')?.textContent.trim(),
@@ -164,7 +168,7 @@ if(
   errors.length||
   chatgpt.product!=='Codex'||chatgpt.newChat!=='New chat'||chatgpt.search!=='Search chats'||chatgpt.section!=='Chats'||chatgpt.footerName!=='Desktop User'||chatgpt.footerMeta!=='Plus plan'||chatgpt.profileHidden||chatgpt.usageHidden||chatgpt.logoutHidden||
   settingsShell.groups.join('|')!=='Personal|Integrations|Coding|Archived'||!settingsShell.pages.includes('Configuration')||!settingsShell.pages.includes('Cloud preferences')||!settingsShell.fullPage||configuration.title!=='Configuration'||!configuration.values.some(value=>value.startsWith('Model'))||settingsSearch.visible.join('|')!=='Browser'||settingsSearch.groups.join('|')!=='Integrations'||!settingsSearch.clearVisible||
-  !settings.open||settings.title!=='Settings'||settings.page!=='General'||settings.permission!=='Ask for approval'||settings.autoReviewHidden||!settings.autoReviewChecked||!settings.fullAccessChecked||
+  !settings.open||settings.title!=='Settings'||settings.page!=='General'||settings.permission!=='Ask for approval'||!settings.autoReviewHidden||!settings.autoReviewChecked||!settings.fullAccessChecked||
   !permissionMenu.open||permissionMenu.options.join('|')!=='Ask for approval|Approve for me|Full access|team-safe|managed-blocked|Custom (config.toml)'||!permissionMenu.blockedDisabled||
   guardian.selected.approvalsReviewer!=='auto_review'||guardian.thread.approvalPolicy!=='on-request'||guardian.thread.approvalsReviewer!=='auto_review'||guardian.thread.sandbox!=='workspace-write'||guardian.turn.approvalsReviewer!=='auto_review'||guardian.turn.sandboxPolicy.type!=='workspaceWrite'||guardian.turn.permissions!==null||
   profile.selected.profileId!=='team-safe'||profile.thread.permissions!=='team-safe'||Object.keys(profile.thread).length!==1||profile.turn.permissions!=='team-safe'||profile.turn.approvalPolicy!==null||profile.turn.approvalsReviewer!==null||'sandboxPolicy' in profile.turn||
