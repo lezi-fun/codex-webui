@@ -10,6 +10,8 @@ docs/app-server-schema/
 !.env.example
 coverage/
 dist/
+/.codex-desktop-reference/
+/.playwright-cli/
 approval-e2e-*.png
 browser-smoke.png
 mobile-layout.png
