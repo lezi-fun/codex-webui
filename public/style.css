@@ -613,13 +613,13 @@ body.sidebar-hidden .sidebar{box-shadow:none!important}
 .sidebar-footer{padding:6px 8px 8px;border-top:1px solid color-mix(in srgb,var(--app-border) 70%,transparent)}
 .account-button{height:40px;gap:9px;padding:4px 7px;border-radius:9px;color:var(--app-text)}
 .account-button:hover,.account-button[aria-expanded=true]{background:var(--app-hover)}
-.account-button .account-avatar{width:28px;height:28px;min-width:28px}
-.account-button .account-avatar img{width:28px;height:28px}
+.account-button .account-avatar{width:20px;height:20px;min-width:20px}
+.account-button .account-avatar img{width:20px;height:20px}
 .account-button-copy{min-width:0;flex:1;display:flex;flex-direction:column;gap:0;overflow:hidden}
 .account-button-copy strong,.account-button-copy small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .account-button-copy strong{font-size:12px;font-weight:560;line-height:16px}
-.account-button-copy small{color:var(--app-text-tertiary);font-size:10px;line-height:14px}
-.account-button>.account-chevron{width:14px;height:14px;min-width:14px;flex:0 0 14px;color:var(--app-text-tertiary)}
+.account-button-copy small{display:none}
+.account-button>.account-chevron{display:none}
 .account-menu{left:8px;right:8px;bottom:54px;padding:6px;border-color:var(--app-border-default);border-radius:11px;background:var(--app-panel);box-shadow:var(--app-elevation-shadow)}
 .account-menu-identity{display:grid;grid-template-columns:30px minmax(0,1fr);align-items:center;gap:9px;padding:7px}
 .account-menu-identity>.account-menu-avatar{width:30px;height:30px;min-width:30px}

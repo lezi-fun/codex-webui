@@ -38,8 +38,8 @@
     <div class="sidebar-top">
       <button class="sidebar-product" id="productModeButton" type="button" aria-label="Switch mode, current mode: Codex"><span class="sidebar-product-mark" id="sidebarCodexMark"></span><strong>Codex</strong><span class="icon-slot chevron" data-icon="chevronDown"></span></button>
       <button class="sidebar-row new-task" id="newTask"><span class="icon-slot" data-icon="plus"></span><span>New chat</span><kbd>⌘K</kbd></button>
-      <label class="sidebar-row search-box"><span class="icon-slot" data-icon="search"></span><input id="threadSearch" type="search" placeholder="Search chats"></label>
-      <div class="sidebar-section-label">Chats</div>
+      <label class="sidebar-row search-box"><span class="icon-slot" data-icon="search"></span><input id="threadSearch" type="search" placeholder="Search" aria-label="Search"></label>
+      <div class="sidebar-section-label">Projects</div>
       <button class="sidebar-row project-button" id="projectButton">
         <span class="project-glyph icon-slot" data-icon="folderOpen"></span>
         <span class="project-copy"><strong id="projectName">codex-webui</strong><span id="projectPath">~/projects/codex-webui</span></span>
@@ -61,7 +61,7 @@
       </div>
       <button class="account-button" id="accountButton" type="button" aria-expanded="false" aria-controls="accountMenu">
         <span class="account-avatar account-initials" id="accountAvatar">?</span>
-        <span class="account-button-copy"><strong id="accountName">Settings</strong><small id="accountFooterMeta"></small></span>
+        <span class="account-button-copy"><strong id="accountName">Settings</strong><small id="accountFooterMeta" aria-hidden="true"></small></span>
         <span class="icon-slot account-chevron" data-icon="chevronDown"></span>
       </button>
       <span id="threadSource" hidden>local</span>
