@@ -135,7 +135,7 @@ $('#closeSettingsNav').onclick=()=>$('#settingsDialog').close();$('#settingsMobi
 function openSettings(page='general'){toggleAccountMenu(false);syncPermissionSettings();$('#settingsPermissionValue').textContent=selectedPermission().label;$('#settingsProjectValue').textContent=state.projectless?'No project':shortPath(state.active?.cwd||$('#projectPath').textContent);$('#settingsSearch').value='';filterSettingsNavigation();setSettingsPage(page);const dialog=$('#settingsDialog'),mobile=matchMedia('(max-width:480px)').matches;settingsMobileLayout=mobile;dialog.dataset.mobilePage=String(mobile);if(!dialog.open)dialog.showModal();requestAnimationFrame(()=>$('#closeSettings').focus())}
 const reasoningLabels={none:'None',minimal:'Minimal',low:'Low',medium:'Medium',high:'High',xhigh:'Extra High',max:'Max',ultra:'Ultra'};
 function reasoningLabel(value){return reasoningLabels[value]||String(value||'Medium')}
-function modelDisplay(model,stripPrefix=false){const value=model?.displayName||model?.model||state.selectedModel||'Select model';return stripPrefix?value.replace(/^GPT-/i,''):value}
+function modelDisplay(model,stripPrefix=false){const value=String(model?.displayName||model?.model||state.selectedModel||'Select model').trim();if(!stripPrefix)return value;return value.replace(/^GPT-/i,'').trim()||value}
 function selectedModel(){return state.models.find(x=>x.model===state.selectedModel)}
 function renderModels(){
   const saved=localStorage.getItem('codex-webui-model'),selection=selectModelState(state.models,saved);state.selectedModel=selection.model;

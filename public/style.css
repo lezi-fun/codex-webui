@@ -496,7 +496,8 @@ body.sidebar-hidden .sidebar{box-shadow:none!important}
   .composer-footer{overflow:hidden}
   .composer-project-control{max-width:128px}
   .composer-project-control #composerProjectLabel{max-width:74px}
-  .model-trigger{max-width:150px}
+  .model-trigger{width:auto;max-width:150px}
+  .model-trigger>span:first-child{display:inline-block}
   .model-trigger #modelLabel{max-width:78px}
   .message-image{max-height:52vh}
   .activity-output.activity-image-output{margin-left:20px}

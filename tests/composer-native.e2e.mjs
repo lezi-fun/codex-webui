@@ -62,7 +62,18 @@ await page.click('#modelButton');
 const solEfforts=await page.locator('#modelMenu .model-effort-row').allTextContents();
 await page.keyboard.press('Escape');
 await page.screenshot({path:artifact('composer-native.png'),fullPage:false});
-console.log(JSON.stringify({home,modelFilter,modelMain,effortSelection,modelSubmenu,lunaEfforts,solEfforts,errors},null,2));
+await page.setViewportSize({width:390,height:844});
+const mobileModel=await page.evaluate(()=>{
+  const label=document.querySelector('#modelLabel'),trigger=document.querySelector('#modelButton'),rect=label?.getBoundingClientRect();
+  return {
+    label:label?.textContent?.trim(),
+    labelDisplay:label?getComputedStyle(label).display:null,
+    labelWidth:rect?.width??0,
+    triggerText:trigger?.textContent?.replace(/\s+/g,' ').trim(),
+    horizontalOverflow:document.documentElement.scrollWidth>innerWidth,
+  };
+});
+console.log(JSON.stringify({home,modelFilter,modelMain,effortSelection,modelSubmenu,lunaEfforts,solEfforts,mobileModel,errors},null,2));
 await browser.close();
 
 const expected=['add','project','approval','model','dictation','send'];
@@ -92,5 +103,10 @@ if(errors.length
   ||lunaEfforts.includes('Ultra')
   ||!lunaEfforts.includes('Max')
   ||!solEfforts.includes('Ultra')
+  ||!mobileModel.label
+  ||mobileModel.labelDisplay==='none'
+  ||mobileModel.labelWidth<1
+  ||!mobileModel.triggerText?.includes(mobileModel.label)
+  ||mobileModel.horizontalOverflow
   ||parseFloat(home.composer.borderRadius)<20
   ||Math.abs(home.send.width-home.send.height)>.5)process.exit(1);
