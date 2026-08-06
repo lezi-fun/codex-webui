@@ -10,6 +10,13 @@
   <a href="./SECURITY.md">Security</a>
 </p>
 
+<p align="center">
+  <a href="./LICENSE"><img alt="MIT License" src="https://img.shields.io/github/license/lezi-fun/codex-webui?style=flat-square"></a>
+  <a href="https://github.com/lezi-fun/codex-webui/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/lezi-fun/codex-webui?style=flat-square"></a>
+  <a href="https://github.com/lezi-fun/codex-webui/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues/lezi-fun/codex-webui?style=flat-square"></a>
+  <a href="https://bun.sh/"><img alt="Bun 1.3 or newer" src="https://img.shields.io/badge/Bun-1.3%2B-fbf0df?style=flat-square&amp;logo=bun&amp;logoColor=000"></a>
+</p>
+
 > [!IMPORTANT]
 > This is an **unofficial community project**. It is not affiliated with, endorsed by, or maintained by OpenAI. OpenAI and Codex are trademarks of their respective owners.
 
@@ -73,15 +80,23 @@ The default bind address is localhost. Use the folder button in the composer or 
 
 ### LAN password login
 
-To listen on your LAN and show the Codex-style password screen to remote browsers:
+To listen on your LAN, start the server without an authentication variable:
+
+```bash
+HOST=0.0.0.0 bun run start
+```
+
+The first LAN browser sees a password setup screen. After a password of at least 12 characters is confirmed, Codex WebUI stores only a salted `scrypt` credential in `~/.codex/codex-webui-auth.json`, signs in that browser, and requires the password after a restart. Because the first reachable LAN client can claim this setup, complete it only on a trusted network.
+
+For unattended deployments, provide the password at startup instead:
 
 ```bash
 HOST=0.0.0.0 CODEX_WEBUI_PASSWORD='use-a-long-random-password' bun run start
 ```
 
-Direct `localhost` access remains available without the password screen. LAN requests must log in before the main application bundle, HTTP APIs, or WebSocket bridges are available. Successful logins use a signed `HttpOnly`, `SameSite=Strict` session cookie.
+Direct `localhost` access remains available without the password screen. LAN requests must set or enter a password before the main application bundle, HTTP APIs, or WebSocket bridges are available. Successful authentication uses a signed `HttpOnly`, `SameSite=Strict` session cookie.
 
-`CODEX_WEBUI_ACCESS_TOKEN` remains available for compatibility with Basic/Bearer clients. If both variables are set, the browser login uses `CODEX_WEBUI_PASSWORD`.
+`CODEX_WEBUI_ACCESS_TOKEN` remains available for compatibility with Basic/Bearer clients. `CODEX_WEBUI_PASSWORD` takes precedence over both the managed password and access token for browser login. Set `CODEX_WEBUI_AUTH_STORE` to move the managed credential file.
 
 ## Configuration
 
@@ -106,7 +121,9 @@ bun run start
 | --- | --- | --- |
 | `HOST` | `127.0.0.1` | HTTP/WebSocket bind address |
 | `PORT` | `8899` | HTTP/WebSocket port |
-| `CODEX_WEBUI_ACCESS_TOKEN` | unset | Enables Basic Auth for every HTTP/WebSocket request; required for non-localhost access, username `codex` |
+| `CODEX_WEBUI_PASSWORD` | unset | Optional browser login password for LAN access; bypasses first-run setup |
+| `CODEX_WEBUI_AUTH_STORE` | `$CODEX_HOME/codex-webui-auth.json` | Salted managed password credential created by first-run setup |
+| `CODEX_WEBUI_ACCESS_TOKEN` | unset | Compatibility secret for Basic/Bearer clients and browser login when no password is configured; username `codex` |
 | `CODEX_WEBUI_CWD` | repository directory | Initial Codex working directory |
 | `CODEX_WEBUI_REVIEW_ROOT` | `CODEX_WEBUI_CWD` | Exact Git root allowed for Undo/Reapply |
 | `CODEX_HOME` | `~/.codex` | Codex state directory containing `auth.json` |
@@ -118,7 +135,7 @@ bun run start
 Codex WebUI can approve command execution and file changes on your machine. Treat it like a local developer tool with shell access.
 
 - Do **not** expose port `8899` directly to the public Internet.
-- The default listener is `127.0.0.1`. Non-localhost HTTP and WebSocket requests require `CODEX_WEBUI_ACCESS_TOKEN`; use Basic Auth username `codex` and the token as the password.
+- The default listener is `127.0.0.1`. A non-localhost listener requires first-run password setup, `CODEX_WEBUI_PASSWORD`, or `CODEX_WEBUI_ACCESS_TOKEN` before protected HTTP and WebSocket requests are accepted.
 - Browser RPC uses an explicit allowlist and cannot invoke app-server `fs/*`, `config/*`, or account methods.
 - Static serving uses an asset allowlist and rejects symbolic links.
 - Filesystem browsing canonicalizes paths and rejects symlinks that escape the user's home directory.
@@ -175,6 +192,15 @@ Main files:
 | `tests/` | Unit, integration, browser, mobile, and real approval tests |
 
 `public/app.bundle.js` is generated automatically when the server starts and is not committed.
+
+During development, `bun run dev` watches both `server.ts` and the browser entry graph rooted at `public/app.js`. Backend changes restart the server, while frontend changes rebuild `public/app.bundle.js`; reload the page to use the new bundle.
+
+Build the browser bundle and a runnable `dist/server.js`:
+
+```bash
+bun run build
+bun dist/server.js
+```
 
 ## Testing
 

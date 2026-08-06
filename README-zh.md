@@ -10,6 +10,13 @@
   <a href="./SECURITY.md">安全政策</a>
 </p>
 
+<p align="center">
+  <a href="./LICENSE"><img alt="MIT 许可证" src="https://img.shields.io/github/license/lezi-fun/codex-webui?style=flat-square"></a>
+  <a href="https://github.com/lezi-fun/codex-webui/stargazers"><img alt="GitHub Stars" src="https://img.shields.io/github/stars/lezi-fun/codex-webui?style=flat-square"></a>
+  <a href="https://github.com/lezi-fun/codex-webui/issues"><img alt="GitHub Issues" src="https://img.shields.io/github/issues/lezi-fun/codex-webui?style=flat-square"></a>
+  <a href="https://bun.sh/"><img alt="Bun 1.3 或更高版本" src="https://img.shields.io/badge/Bun-1.3%2B-fbf0df?style=flat-square&amp;logo=bun&amp;logoColor=000"></a>
+</p>
+
 > [!IMPORTANT]
 > 这是一个**非官方社区项目**，与 OpenAI 没有隶属、背书或维护关系。OpenAI、Codex 及相关标识归其各自权利人所有。
 
@@ -71,6 +78,24 @@ http://127.0.0.1:8899
 
 默认只监听 localhost。点击 Composer 或侧栏中的文件夹按钮，即可选择 Codex 的工作目录。
 
+### 局域网密码
+
+未配置认证变量时，可以直接监听局域网：
+
+```bash
+HOST=0.0.0.0 bun run start
+```
+
+首个通过局域网访问的浏览器会看到密码设置页。确认至少 12 个字符的密码后，Codex WebUI 只把加盐后的 `scrypt` 凭据保存在 `~/.codex/codex-webui-auth.json`，并立即登录当前浏览器；服务重启后会显示普通登录页。由于第一个可访问该地址的局域网客户端拥有初始化权，请只在可信网络中完成首次设置。
+
+无人值守部署也可以在启动时直接指定密码：
+
+```bash
+HOST=0.0.0.0 CODEX_WEBUI_PASSWORD='use-a-long-random-password' bun run start
+```
+
+localhost 仍可直接访问。局域网客户端在设置或输入密码前，无法访问应用 Bundle、HTTP API 和 WebSocket bridge。认证成功后使用签名的 `HttpOnly`、`SameSite=Strict` 会话 Cookie。
+
 ## 配置
 
 可复制示例配置：
@@ -94,7 +119,9 @@ bun run start
 | --- | --- | --- |
 | `HOST` | `127.0.0.1` | HTTP/WebSocket 监听地址 |
 | `PORT` | `8899` | HTTP/WebSocket 端口 |
-| `CODEX_WEBUI_ACCESS_TOKEN` | 未设置 | 设置后所有 HTTP/WebSocket 请求启用 Basic Auth；非 localhost 访问必须设置，用户名为 `codex` |
+| `CODEX_WEBUI_PASSWORD` | 未设置 | 可选的局域网浏览器登录密码；设置后跳过首次初始化页 |
+| `CODEX_WEBUI_AUTH_STORE` | `$CODEX_HOME/codex-webui-auth.json` | 首次初始化生成的加盐密码凭据文件 |
+| `CODEX_WEBUI_ACCESS_TOKEN` | 未设置 | Basic/Bearer 客户端兼容密钥；未配置密码时也可用于浏览器登录，用户名为 `codex` |
 | `CODEX_WEBUI_CWD` | 仓库目录 | Codex 初始工作目录 |
 | `CODEX_WEBUI_REVIEW_ROOT` | 与 `CODEX_WEBUI_CWD` 相同 | 允许 Undo/Reapply 的精确 Git 根目录 |
 | `CODEX_HOME` | `~/.codex` | 包含 `auth.json` 的 Codex 状态目录 |
@@ -106,7 +133,7 @@ bun run start
 Codex WebUI 可以在本机批准执行命令和修改文件，应把它视为拥有 Shell 能力的本地开发工具。
 
 - 不要把 `8899` 端口直接暴露到公网。
-- 默认只监听 `127.0.0.1`。非 localhost 的 HTTP 和 WebSocket 请求必须提供 `CODEX_WEBUI_ACCESS_TOKEN`；Basic Auth 用户名为 `codex`，密码为该 token。
+- 默认只监听 `127.0.0.1`。监听非 localhost 地址时，必须先完成首次密码设置，或配置 `CODEX_WEBUI_PASSWORD` / `CODEX_WEBUI_ACCESS_TOKEN`，受保护的 HTTP 与 WebSocket 请求才会放行。
 - 浏览器 RPC 使用明确白名单，无法调用 app-server 的 `fs/*`、`config/*` 或账号方法。
 - 静态文件使用资源白名单，并拒绝所有符号链接。
 - 文件夹浏览会 canonicalize 路径，拒绝通过 symlink 逃逸用户 Home 目录。
@@ -163,6 +190,15 @@ flowchart LR
 | `tests/` | 单元、集成、浏览器、移动端和真实审批测试 |
 
 `public/app.bundle.js` 会在服务启动时自动生成，不提交到 Git。
+
+开发时使用 `bun run dev` 会同时监听 `server.ts` 和以 `public/app.js` 为入口的浏览器依赖图。后端变化会重启服务，前端变化会重建 `public/app.bundle.js`；刷新网页即可加载新 Bundle。
+
+生成可直接运行的浏览器 Bundle 和 `dist/server.js`：
+
+```bash
+bun run build
+bun dist/server.js
+```
 
 ## 测试
 
