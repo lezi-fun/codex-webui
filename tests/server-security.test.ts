@@ -2,11 +2,11 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { createPasswordSession, isAllowedBrowserRpcMethod, isRequestAuthorized, parseCookieHeader, resolvePublicAsset, verifyPasswordSession } from "../server-security.js";
+import { createPasswordSession, createStoredPassword, isAllowedBrowserRpcMethod, isRequestAuthorized, parseCookieHeader, resolvePublicAsset, storedPasswordSessionSecret, verifyPasswordSession, verifyStoredPassword } from "../server-security.js";
 
 describe("WebUI server security boundary", () => {
   test("allows only the RPC methods used by the browser client", () => {
-    for (const method of ["model/list", "thread/list", "thread/read", "thread/start", "turn/start", "turn/interrupt"]) {
+    for (const method of ["model/list", "permissionProfile/list", "account/logout", "thread/list", "thread/read", "thread/start", "turn/start", "turn/interrupt"]) {
       expect(isAllowedBrowserRpcMethod(method)).toBe(true);
     }
     for (const method of ["fs/readFile", "fs/writeFile", "fs/remove", "fs/copy", "config/read", "account/read", "skills/list"]) {
@@ -54,6 +54,18 @@ describe("WebUI server security boundary", () => {
     expect(verifyPasswordSession(session.token, "wrong horse", { now: 1_700_000_030_000 })).toBe(false);
     expect(verifyPasswordSession(session.token, "correct horse", { now: 1_700_000_060_001 })).toBe(false);
     expect(verifyPasswordSession(`${session.token}x`, "correct horse", { now: 1_700_000_030_000 })).toBe(false);
+  });
+
+  test("hashes managed passwords and derives a stable session secret", () => {
+    const credential = createStoredPassword("correct horse battery staple", { salt: "0123456789abcdef" });
+    expect(JSON.stringify(credential)).not.toContain("correct horse battery staple");
+    expect(verifyStoredPassword("correct horse battery staple", credential)).toBe(true);
+    expect(verifyStoredPassword("wrong horse battery staple", credential)).toBe(false);
+    const secret = storedPasswordSessionSecret(credential);
+    expect(secret).toBe(storedPasswordSessionSecret(credential));
+    expect(secret).not.toBe(credential.hash);
+    const session = createPasswordSession(secret, { now: 1_700_000_000_000, ttlMs: 60_000 });
+    expect(verifyPasswordSession(session.token, secret, { now: 1_700_000_030_000 })).toBe(true);
   });
 
   test("accepts the signed session cookie for same-origin LAN HTTP and WebSocket requests", () => {

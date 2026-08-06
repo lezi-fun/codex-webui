@@ -1,9 +1,11 @@
 import { lstatSync, realpathSync, statSync } from "node:fs";
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { resolve, sep } from "node:path";
 
 const BROWSER_RPC_METHODS = new Set([
   "model/list",
+  "permissionProfile/list",
+  "account/logout",
   "thread/list",
   "thread/read",
   "thread/start",
@@ -36,6 +38,7 @@ function safeEqual(left, right) {
 
 const PASSWORD_SESSION_COOKIE = "codex_webui_session";
 const DEFAULT_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const STORED_PASSWORD_VERSION = 1;
 
 function sessionSignature(payload, password) {
   return createHmac("sha256", password).update(payload).digest("base64url");
@@ -72,6 +75,32 @@ export function verifyPasswordSession(token, password, { now = Date.now() } = {}
 
 export function passwordSessionCookie(token, { secure = false, maxAgeSeconds = Math.floor(DEFAULT_SESSION_TTL_MS / 1000) } = {}) {
   return `${PASSWORD_SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAgeSeconds}${secure ? "; Secure" : ""}`;
+}
+
+export function createStoredPassword(password, { salt = randomBytes(16).toString("base64url") } = {}) {
+  if (typeof password !== "string" || !password || typeof salt !== "string" || !salt) throw new Error("Password and salt are required");
+  const hash = scryptSync(password, salt, 32).toString("base64url");
+  return { version: STORED_PASSWORD_VERSION, algorithm: "scrypt", salt, hash };
+}
+
+export function isStoredPassword(value) {
+  return value?.version === STORED_PASSWORD_VERSION
+    && value?.algorithm === "scrypt"
+    && typeof value?.salt === "string"
+    && value.salt.length >= 16
+    && typeof value?.hash === "string"
+    && value.hash.length >= 32;
+}
+
+export function verifyStoredPassword(password, credential) {
+  if (typeof password !== "string" || !isStoredPassword(credential)) return false;
+  try { return safeEqual(scryptSync(password, credential.salt, 32).toString("base64url"), credential.hash); }
+  catch { return false; }
+}
+
+export function storedPasswordSessionSecret(credential) {
+  if (!isStoredPassword(credential)) return null;
+  return createHash("sha256").update(`codex-webui-session:${credential.salt}:${credential.hash}`).digest("base64url");
 }
 
 function hostnameOf(hostHeader) {

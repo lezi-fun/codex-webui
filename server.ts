@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, resolve, extname } from "node:path";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { networkInterfaces } from "node:os";
+import { networkInterfaces, tmpdir } from "node:os";
 import { WebSocketServer, WebSocket } from "ws";
 import { defaultBrowseRoots, isDirectory, listFolders, resolveBrowsePath } from "./folder-service.js";
 import { applyReviewPatch } from "./review-service.js";
@@ -10,16 +10,21 @@ import { ReviewDiffStore, parseReviewPatchRequest } from "./review-state.js";
 import { createTerminalSession, normalizeTerminalResize, resolveTerminalCwd } from "./terminal-service.js";
 import { readWorkspaceContext } from "./workspace-context.js";
 import { searchWorkspaceFiles } from "./file-search.js";
+import { resolveLocalImage } from "./image-service.js";
 import {
   createPasswordSession,
+  createStoredPassword,
   isAllowedBrowserRpcMethod,
   isAuthorizedHttpRequest,
   isRequestAuthorized,
   passwordSessionCookie,
   resolvePublicAsset,
   resolveSafeRegularFile,
+  storedPasswordSessionSecret,
   unauthorizedResponse,
+  verifyStoredPassword,
 } from "./server-security.js";
+import { loadStoredPassword, passwordStorePath, saveStoredPassword, type StoredPassword } from "./password-store.js";
 import {
   createAccountIdentityLoader,
   fetchProfileAvatar,
@@ -31,13 +36,18 @@ import {
 const host = process.env.HOST || "127.0.0.1";
 const port = Number(process.env.PORT || 8899);
 const accessToken = process.env.CODEX_WEBUI_ACCESS_TOKEN || null;
-const password = process.env.CODEX_WEBUI_PASSWORD || null;
-const authSecret = password || accessToken;
+const environmentPassword = process.env.CODEX_WEBUI_PASSWORD || null;
+const managedPasswordPath = passwordStorePath();
+let managedPassword: StoredPassword | null = environmentPassword || accessToken ? null : loadStoredPassword(managedPasswordPath);
+let authSecret = environmentPassword || accessToken || storedPasswordSessionSecret(managedPassword);
+let passwordSetupInProgress = false;
 const localhostOnly = host === "127.0.0.1" || host === "::1" || host === "localhost";
-const publicDir = resolve(import.meta.dir, "public");
+const appRoot = existsSync(resolve(import.meta.dir, "public")) ? import.meta.dir : resolve(import.meta.dir, "..");
+const publicDir = resolve(appRoot, "public");
 const homeDir = process.env.HOME || process.cwd();
-const defaultCwd = resolve(process.env.CODEX_WEBUI_CWD || import.meta.dir);
+const defaultCwd = resolve(process.env.CODEX_WEBUI_CWD || appRoot);
 const browseRoots = defaultBrowseRoots(homeDir);
+const imageRoots = [...new Set([...browseRoots, resolve(tmpdir()), resolve("/tmp")])];
 const reviewRoots = [resolve(process.env.CODEX_WEBUI_REVIEW_ROOT || defaultCwd)];
 const clients = new Set<WebSocket>();
 const sseClients = new Set<ServerResponse>();
@@ -215,6 +225,61 @@ function readJsonBody(req: IncomingMessage, maxBytes = 256_000) {
   });
 }
 
+function passwordSetupRequired() {
+  return !localhostOnly && !authSecret;
+}
+
+function browserPasswordConfigured() {
+  return Boolean(environmentPassword || managedPassword || accessToken);
+}
+
+function requestMatchesSecret(req: IncomingMessage, submittedPassword: string, expectedSecret: string | null) {
+  if (!submittedPassword || !expectedSecret) return false;
+  return isRequestAuthorized({
+    remoteAddress: req.socket.remoteAddress,
+    hostHeader: req.headers.host,
+    authorization: `Bearer ${submittedPassword}`,
+    accessToken: expectedSecret,
+    origin: req.headers.origin,
+    fetchSite: req.headers["sec-fetch-site"],
+    forwardedFor: req.headers["x-forwarded-for"],
+    forwarded: req.headers.forwarded,
+    realIp: req.headers["x-real-ip"],
+    allowLoopback: false,
+  });
+}
+
+function validBrowserPassword(req: IncomingMessage, submittedPassword: string) {
+  if (environmentPassword) return requestMatchesSecret(req, submittedPassword, environmentPassword);
+  if (managedPassword) {
+    if (!requestMatchesSecret(req, submittedPassword, submittedPassword)) return false;
+    return verifyStoredPassword(submittedPassword, managedPassword);
+  }
+  return requestMatchesSecret(req, submittedPassword, accessToken);
+}
+
+function sendAuthError(res: ServerResponse, status: number, error: string, extraHeaders: Record<string, string> = {}) {
+  res.writeHead(status, {
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "no-store",
+    "x-content-type-options": "nosniff",
+    ...extraHeaders,
+  });
+  res.end(JSON.stringify({ error }));
+}
+
+function issueBrowserSession(req: IncomingMessage, res: ServerResponse) {
+  if (!authSecret) throw new Error("Authentication is not configured");
+  const session = createPasswordSession(authSecret);
+  res.writeHead(200, {
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "no-store",
+    "set-cookie": passwordSessionCookie(session.token, { secure: Boolean((req.socket as any).encrypted) }),
+    "x-content-type-options": "nosniff",
+  });
+  res.end(JSON.stringify({ ok: true }));
+}
+
 const mime: Record<string, string> = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
   ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon",
@@ -230,56 +295,82 @@ const server = createServer(async (req, res) => {
   }
   const loginAssets = new Set(["/", "/index.html", "/style.css", "/auth-bootstrap.js", "/codex-brand.js"]);
   if (url.pathname === "/api/auth/status") {
-    const authenticated = isAuthorizedHttpRequest(req, authSecret, localhostOnly);
+    const authenticated = isAuthorizedHttpRequest(req, authSecret);
     res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });
-    res.end(JSON.stringify({ passwordRequired: Boolean(password), authenticated }));
+    res.end(JSON.stringify({
+      setupRequired: passwordSetupRequired() && !authenticated,
+      passwordRequired: browserPasswordConfigured(),
+      authenticated,
+    }));
+    return;
+  }
+  if (url.pathname === "/api/auth/setup") {
+    if (req.method !== "POST") {
+      sendAuthError(res, 405, "Method not allowed", { allow: "POST" });
+      return;
+    }
+    let payload: any;
+    try { payload = await readJsonBody(req, 4096); }
+    catch (error) {
+      sendAuthError(res, 400, error instanceof Error ? error.message : "Invalid setup request");
+      return;
+    }
+    const submittedPassword = typeof payload?.password === "string" ? payload.password : "";
+    if (submittedPassword.length < 12 || submittedPassword.length > 256) {
+      sendAuthError(res, 400, "Password must be between 12 and 256 characters");
+      return;
+    }
+    if (!requestMatchesSecret(req, submittedPassword, submittedPassword)) {
+      sendAuthError(res, 403, "Password setup request was rejected");
+      return;
+    }
+    if (!passwordSetupRequired() || passwordSetupInProgress) {
+      sendAuthError(res, 409, "Password setup is no longer available");
+      return;
+    }
+    passwordSetupInProgress = true;
+    try {
+      const credential = createStoredPassword(submittedPassword) as StoredPassword;
+      saveStoredPassword(managedPasswordPath, credential);
+      managedPassword = credential;
+      authSecret = storedPasswordSessionSecret(credential);
+      issueBrowserSession(req, res);
+    } catch (error: any) {
+      if (error?.code === "EEXIST") {
+        try {
+          managedPassword = loadStoredPassword(managedPasswordPath);
+          authSecret = storedPasswordSessionSecret(managedPassword);
+        } catch { /* Keep the original exclusive-create failure as the response. */ }
+        sendAuthError(res, 409, "Password setup is no longer available");
+      } else {
+        console.error("[codex-webui] password setup failed", error);
+        sendAuthError(res, 500, "Unable to save the password");
+      }
+    } finally {
+      passwordSetupInProgress = false;
+    }
     return;
   }
   if (url.pathname === "/api/auth/login") {
     if (req.method !== "POST") {
-      res.writeHead(405, { "content-type": "application/json; charset=utf-8", allow: "POST" });
-      res.end(JSON.stringify({ error: "Method not allowed" }));
+      sendAuthError(res, 405, "Method not allowed", { allow: "POST" });
       return;
     }
-    let body = "";
-    req.setEncoding("utf8");
-    req.on("data", chunk => {
-      body += chunk;
-      if (body.length > 4096) req.destroy(new Error("Login payload too large"));
-    });
-    req.on("end", () => {
-      let submittedPassword = "";
-      try { submittedPassword = JSON.parse(body || "{}").password || ""; }
-      catch { /* Invalid JSON is an invalid password. */ }
-      const valid = password && isRequestAuthorized({
-        remoteAddress: req.socket.remoteAddress,
-        hostHeader: req.headers.host,
-        authorization: `Bearer ${submittedPassword}`,
-        accessToken: password,
-        origin: req.headers.origin,
-        fetchSite: req.headers["sec-fetch-site"],
-        forwardedFor: req.headers["x-forwarded-for"],
-        forwarded: req.headers.forwarded,
-        realIp: req.headers["x-real-ip"],
-        allowLoopback: false,
-      });
-      if (!valid) {
-        res.writeHead(401, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });
-        res.end(JSON.stringify({ error: "Incorrect password" }));
-        return;
-      }
-      const session = createPasswordSession(password);
-      res.writeHead(200, {
-        "content-type": "application/json; charset=utf-8",
-        "cache-control": "no-store",
-        "set-cookie": passwordSessionCookie(session.token, { secure: Boolean((req.socket as any).encrypted) }),
-        "x-content-type-options": "nosniff",
-      });
-      res.end(JSON.stringify({ ok: true }));
-    });
+    let payload: any;
+    try { payload = await readJsonBody(req, 4096); }
+    catch {
+      sendAuthError(res, 401, "Incorrect password");
+      return;
+    }
+    const submittedPassword = typeof payload?.password === "string" ? payload.password : "";
+    if (!validBrowserPassword(req, submittedPassword)) {
+      sendAuthError(res, 401, "Incorrect password");
+      return;
+    }
+    issueBrowserSession(req, res);
     return;
   }
-  if (!isAuthorizedHttpRequest(req, authSecret, localhostOnly)) {
+  if (!isAuthorizedHttpRequest(req, authSecret)) {
     if (loginAssets.has(url.pathname)) {
       const file = resolvePublicAsset(url.pathname, publicDir);
       if (file) {
@@ -365,9 +456,36 @@ const server = createServer(async (req, res) => {
     }
     return;
   }
+  if (url.pathname === "/api/images/local") {
+    if (req.method !== "GET") {
+      res.writeHead(405, { "content-type": "application/json; charset=utf-8", allow: "GET", "cache-control": "no-store" });
+      res.end(JSON.stringify({ error: "Method not allowed" }));
+      return;
+    }
+    try {
+      const image = resolveLocalImage(url.searchParams.get("path"), {
+        cwd: url.searchParams.get("cwd") || defaultCwd,
+        home: homeDir,
+        allowedRoots: imageRoots,
+      });
+      res.writeHead(200, {
+        "content-type": image.contentType,
+        "content-length": String(image.size),
+        "content-disposition": `inline; filename*=UTF-8''${encodeURIComponent(image.filename)}`,
+        "cache-control": "private, max-age=60",
+        "cross-origin-resource-policy": "same-origin",
+        "x-content-type-options": "nosniff",
+      });
+      res.end(readFileSync(image.path));
+    } catch {
+      res.writeHead(404, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });
+      res.end(JSON.stringify({ error: "Image unavailable" }));
+    }
+    return;
+  }
   if (url.pathname === "/api/account" || url.pathname === "/api/account/avatar") {
     const proxied = Boolean(req.headers["x-forwarded-for"] || req.headers.forwarded || req.headers["x-real-ip"]);
-    if (!localhostOnly || proxied || !isLocalAccountRequest(req.socket.remoteAddress, req.headers.host, req.headers["sec-fetch-site"] as string | undefined)) {
+    if (proxied || !isLocalAccountRequest(req.socket.remoteAddress, req.headers.host, req.headers["sec-fetch-site"] as string | undefined)) {
       res.writeHead(403, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
       res.end(JSON.stringify({ error: "Account identity is available only on localhost" }));
       return;
@@ -457,7 +575,7 @@ const server = createServer(async (req, res) => {
     let relative;
     try { relative = decodeURIComponent(url.pathname.slice("/vendor/katex/".length)); }
     catch { res.writeHead(404, { "content-type": "text/plain; charset=utf-8" }); res.end("Not found"); return; }
-    const katexDir = resolve(import.meta.dir, "node_modules/katex/dist");
+    const katexDir = resolve(appRoot, "node_modules/katex/dist");
     const file = resolveSafeRegularFile(katexDir, relative);
     if (!file) {
       res.writeHead(404, { "content-type": "text/plain; charset=utf-8" }); res.end("Not found"); return;
@@ -467,7 +585,7 @@ const server = createServer(async (req, res) => {
     return;
   }
   if (url.pathname === "/vendor/xterm/xterm.css") {
-    const xtermDir = resolve(import.meta.dir, "node_modules/@xterm/xterm/css");
+    const xtermDir = resolve(appRoot, "node_modules/@xterm/xterm/css");
     const file = resolveSafeRegularFile(xtermDir, "xterm.css");
     if (!file) {
       res.writeHead(404, { "content-type": "text/plain; charset=utf-8" }); res.end("Not found"); return;
@@ -495,7 +613,7 @@ server.on("upgrade", (req, socket, head) => {
   let pathname = "";
   try { pathname = new URL(req.url || "/", "http://localhost").pathname; }
   catch { socket.destroy(); return; }
-  if ((pathname !== "/ws" && pathname !== "/terminal") || !isAuthorizedHttpRequest(req, authSecret, localhostOnly)) {
+  if ((pathname !== "/ws" && pathname !== "/terminal") || !isAuthorizedHttpRequest(req, authSecret)) {
     const body = JSON.stringify({ error: "Authentication required" });
     socket.end([
       "HTTP/1.1 401 Unauthorized",
@@ -575,7 +693,7 @@ if (!frontendBuild.success) throw new Error(`Frontend build failed: ${frontendBu
 startCodex();
 server.listen(port, host, () => {
   console.log(`Codex WebUI listening on http://${host}:${port}`);
-  if (!localhostOnly && !authSecret) console.warn("[codex-webui] Non-localhost requests are disabled until CODEX_WEBUI_PASSWORD or CODEX_WEBUI_ACCESS_TOKEN is configured");
+  if (passwordSetupRequired()) console.warn(`[codex-webui] LAN password setup is required; the first LAN visitor will create it in ${managedPasswordPath}`);
   if (!localhostOnly) {
     const addresses = Object.values(networkInterfaces()).flat().filter((entry): entry is NonNullable<typeof entry> => !!entry && entry.family === "IPv4" && !entry.internal);
     for (const entry of addresses) console.log(`LAN: http://${entry.address}:${port} (authentication required)`);
