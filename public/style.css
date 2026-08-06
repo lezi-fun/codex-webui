@@ -439,6 +439,13 @@ body.sidebar-hidden .sidebar{box-shadow:none!important}
 .model-trigger #modelLabel{min-width:0;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--app-text-secondary);font-variant-numeric:tabular-nums}
 .model-trigger #effortLabel{color:var(--app-text-secondary);white-space:nowrap}
 .model-trigger .chevron{margin-left:0}
+.context-usage{position:relative;width:18px;height:28px;display:inline-flex;flex:0 0 18px;align-items:center;justify-content:center;color:var(--app-text-tertiary);outline:none}
+.context-usage[hidden]{display:none}
+.context-usage svg{width:12px;height:12px;overflow:visible;fill:none;stroke:currentColor;stroke-width:2}
+.context-usage-track{opacity:.16}
+.context-usage-progress{stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:calc(100 - var(--context-percent,0));transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset 120ms ease-out}
+.context-usage::after{content:attr(data-tooltip);position:absolute;z-index:80;left:50%;bottom:34px;width:152px;padding:7px 9px;border:1px solid var(--app-border-default);border-radius:8px;background:var(--app-panel);box-shadow:var(--app-elevation-shadow);color:var(--app-text-secondary);font-size:11px;line-height:16px;text-align:center;white-space:pre-line;opacity:0;pointer-events:none;transform:translate(-50%,4px);transition:opacity 100ms,transform 100ms}
+.context-usage:hover::after,.context-usage:focus-visible::after{opacity:1;transform:translate(-50%,0)}
 .model-menu{left:auto;right:0;bottom:36px;width:224px;max-height:min(420px,70vh);padding:6px;border:1px solid var(--app-border-default);border-radius:10px;background:var(--app-panel);box-shadow:var(--app-elevation-shadow)}
 .model-menu-view{display:flex;min-width:0;flex-direction:column}
 .model-menu-title-row{height:28px;display:flex;align-items:center;padding:0 7px}
@@ -517,6 +524,7 @@ body.sidebar-hidden .sidebar{box-shadow:none!important}
   .model-trigger #modelLabel{max-width:54px}
   .composer-left{min-width:0;flex:1}
 }
+@media(max-width:360px){.context-usage{display:none}}
 
 /* Composer permission surface and native side-panel utilities. */
 .permission-picker{position:relative;min-width:0}

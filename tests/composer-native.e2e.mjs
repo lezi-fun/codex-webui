@@ -33,6 +33,20 @@ const home=await page.evaluate(()=>{
     nativeTrigger:trigger?.hasAttribute('data-codex-intelligence-trigger'),
   };
 });
+const contextUsage=await page.evaluate(()=>{
+  const api=globalThis.__codexWebuiDebug,initiallyHidden=document.querySelector('#contextUsage').hidden;
+  api.state.active={id:'context-thread',cwd:api.state.config.defaultCwd};
+  api.notify('thread/tokenUsage/updated',{threadId:'context-thread',tokenUsage:{modelContextWindow:200000,last:{totalTokens:80000}}});
+  const indicator=document.querySelector('#contextUsage'),progress=indicator.querySelector('.context-usage-progress'),model=document.querySelector('#modelPicker');
+  return {
+    initiallyHidden,
+    hidden:indicator.hidden,
+    ariaLabel:indicator.getAttribute('aria-label'),
+    tooltip:indicator.dataset.tooltip,
+    dashOffset:getComputedStyle(progress).strokeDashoffset,
+    beforeModel:Boolean(indicator.compareDocumentPosition(model)&Node.DOCUMENT_POSITION_FOLLOWING),
+  };
+});
 
 await page.click('#modelButton');
 await page.screenshot({path:artifact('composer-model-menu.png'),fullPage:false});
@@ -73,7 +87,7 @@ const mobileModel=await page.evaluate(()=>{
     horizontalOverflow:document.documentElement.scrollWidth>innerWidth,
   };
 });
-console.log(JSON.stringify({home,modelFilter,modelMain,effortSelection,modelSubmenu,lunaEfforts,solEfforts,mobileModel,errors},null,2));
+console.log(JSON.stringify({home,contextUsage,modelFilter,modelMain,effortSelection,modelSubmenu,lunaEfforts,solEfforts,mobileModel,errors},null,2));
 await browser.close();
 
 const expected=['add','project','approval','model','dictation','send'];
@@ -84,6 +98,12 @@ if(errors.length
   ||home.contextTrayHidden!==true
   ||JSON.stringify(home.controls)!==JSON.stringify(expected)
   ||!home.nativeTrigger
+  ||!contextUsage.initiallyHidden
+  ||contextUsage.hidden
+  ||contextUsage.ariaLabel!=='Context usage: 40%'
+  ||contextUsage.tooltip!=='Context window:\n40% used (60% left)\n80k / 200k tokens used'
+  ||Math.abs(parseFloat(contextUsage.dashOffset)-60)>.1
+  ||!contextUsage.beforeModel
   ||/^GPT-/i.test(home.triggerText||'')
   ||modelFilter.hasO3
   ||modelFilter.models.some(model=>!/^gpt(?:[-_.\s]|$)/i.test(model))
