@@ -182,17 +182,30 @@ function explorationCommand(command = "") {
   }
   if (["ls", "find", "fd"].includes(name)) {
     const target = words.slice(1).find((word) => !word.startsWith("-")) || "files";
-    return { category: "list", detail: target, activeLabel: "Listing", completedLabel: "Listed", animation: "local-context" };
+    return { category: "list", detail: target === "files" ? "files" : `files in ${target}`, activeLabel: "Listing", completedLabel: "Listed", animation: "local-context" };
   }
   return null;
 }
 
 export function summarizeActivity(item) {
   const status = item.status || "completed";
-  const active = status === "inProgress";
-  const failed = status === "failed" || status === "declined";
+  const active = status === "inProgress" || status === "running" || status === "pendingInit";
+  const failed = ["failed", "declined", "errored", "interrupted", "cancelled", "canceled"].includes(status);
+  if (item.type === "imageView") {
+    const paths = item.imagePaths || [];
+    const count = paths.length;
+    return {
+      label: active ? "Viewing images" : failed ? "Image view failed" : count === 1 ? "Viewed image" : "Viewed images",
+      detail: count === 1 ? paths[0] : count ? `${count} images` : "",
+      category: "image",
+      animation: "local-context",
+      active,
+      tone: failed ? "error" : active ? "active" : "success",
+    };
+  }
   if (item.type === "commandExecution") {
-    const exploration = explorationCommand(item.command);
+    const command = item.command || (item.commandActions || []).map((action) => action?.command).filter(Boolean).join("\n");
+    const exploration = explorationCommand(command);
     if (exploration && !failed) return {
       label: active ? exploration.activeLabel : exploration.completedLabel,
       detail: exploration.detail,
@@ -203,7 +216,7 @@ export function summarizeActivity(item) {
     };
     return {
       label: active ? "Running command" : failed ? "Command failed" : "Ran command",
-      detail: item.command || "",
+      detail: command || "",
       category: "command",
       animation: "run-command",
       active,
@@ -220,6 +233,34 @@ export function summarizeActivity(item) {
       tone: failed ? "error" : active ? "active" : "success",
     };
   }
+  if (item.type === "collabAgentToolCall") {
+    const receivers = item.receiverThreadIds || [];
+    const count = receivers.length;
+    const labels = {
+      spawnAgent: ["Starting side task", "Started side task"],
+      sendInput: ["Sending input to side task", "Sent input to side task"],
+      resumeAgent: ["Resuming side task", "Resumed side task"],
+      wait: ["Waiting for side tasks", "Waited for side tasks"],
+      closeAgent: ["Closing side task", "Closed side task"],
+    };
+    const [activeLabel, completedLabel] = labels[item.tool] || ["Updating side task", "Updated side task"];
+    return {
+      label: active ? activeLabel : failed ? "Side task failed" : completedLabel,
+      detail: item.prompt || (count ? `${count} side task${count === 1 ? "" : "s"}` : ""),
+      category: "side-task",
+      animation: "local-context",
+      active,
+      tone: failed ? "error" : active ? "active" : "success",
+    };
+  }
+  if (item.type === "subAgentActivity") return {
+    label: item.kind === "interrupted" ? "Side task interrupted" : item.kind === "interacted" ? "Side task active" : "Side task started",
+    detail: item.agentPath || item.agentThreadId || "",
+    category: "side-task",
+    animation: "local-context",
+    active: item.kind !== "interrupted" && active,
+    tone: item.kind === "interrupted" ? "error" : active ? "active" : "success",
+  };
   if (item.type === "webSearch") return {
     label: active ? "Searching the web" : failed ? "Search failed" : "Searched the web",
     detail: item.query || "",

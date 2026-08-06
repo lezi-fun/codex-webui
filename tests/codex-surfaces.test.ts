@@ -113,13 +113,14 @@ describe("Codex execution state", () => {
     expect(summarizeActivity({ type: "commandExecution", status: "inProgress", command: "bun test" })).toMatchObject({ label: "Running command", active: true, animation: "run-command" });
     expect(summarizeActivity({ type: "fileChange", status: "completed", changes: [{ path: "a.ts" }] })).toMatchObject({ label: "Edited a file", active: false, animation: "edit-files" });
     expect(summarizeActivity({ type: "webSearch", status: "failed", query: "Codex" })).toMatchObject({ label: "Search failed", active: false, tone: "error" });
+    expect(summarizeActivity({ type: "imageView", status: "completed", imagePaths: ["/tmp/result.png"] })).toMatchObject({ label: "Viewed image", detail: "/tmp/result.png", category: "image", active: false });
   });
 
   test("uses native exploration verbs for file commands", () => {
     expect(summarizeActivity({ type: "commandExecution", status: "inProgress", command: "cat public/app.js" })).toMatchObject({ label: "Reading", detail: "public/app.js", category: "read", active: true });
     expect(summarizeActivity({ type: "commandExecution", status: "completed", command: "cat public/app.js" })).toMatchObject({ label: "Read", detail: "public/app.js", category: "read", active: false });
     expect(summarizeActivity({ type: "commandExecution", status: "inProgress", command: "rg -n native public" })).toMatchObject({ label: "Searching", category: "search", active: true });
-    expect(summarizeActivity({ type: "commandExecution", status: "completed", command: "ls public" })).toMatchObject({ label: "Listed", detail: "public", category: "list", active: false });
+    expect(summarizeActivity({ type: "commandExecution", status: "completed", command: "ls public" })).toMatchObject({ label: "Listed", detail: "files in public", category: "list", active: false });
   });
 
   test("does not disguise compound or mutating commands as exploration", () => {

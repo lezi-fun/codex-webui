@@ -29,6 +29,12 @@ export function selectModelState(models, requestedModel) {
   return { model: selected.model, effort, efforts: efforts.length ? efforts : [effort] };
 }
 
+export function filterAppModels(models) {
+  return (Array.isArray(models) ? models : []).filter((model) =>
+    [model?.model, model?.id, model?.displayName].some((value) => /^gpt(?:[-_.\s]|$)/i.test(String(value || ""))),
+  );
+}
+
 export function resolveComposerPlaceholder({
   followUpType,
   composerMode = "local",

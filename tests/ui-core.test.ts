@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { DEFAULT_TURN_PAGE_SIZE, applyComposerSuggestion, createLatestRequestGate, createTurnWindow, getComposerAutocomplete, resolveComposerPlaceholder, selectModelState } from "../public/ui-core.js";
+import { DEFAULT_TURN_PAGE_SIZE, applyComposerSuggestion, createLatestRequestGate, createTurnWindow, filterAppModels, getComposerAutocomplete, resolveComposerPlaceholder, selectModelState } from "../public/ui-core.js";
 
 describe("conversation turn window", () => {
   test("uses a small default page for fast first paint", () => {
@@ -36,6 +36,16 @@ describe("latest request gate", () => {
 });
 
 describe("model selection", () => {
+  test("keeps only GPT models for the desktop model picker", () => {
+    const models = [
+      { model: "gpt-5.6-sol", displayName: "GPT-5.6-Sol" },
+      { model: "o3", displayName: "o3" },
+      { model: "codex-mini", displayName: "Codex Mini" },
+      { id: "gpt-5.5", displayName: "GPT-5.5" },
+    ];
+    expect(filterAppModels(models).map((model) => model.model || model.id)).toEqual(["gpt-5.6-sol", "gpt-5.5"]);
+  });
+
   test("selects a model and its advertised default effort", () => {
     const models = [
       { model: "gpt-5.5", defaultReasoningEffort: "medium", supportedReasoningEfforts: [{ reasoningEffort: "medium" }] },
