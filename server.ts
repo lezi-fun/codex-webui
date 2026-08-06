@@ -293,6 +293,7 @@ const server = createServer(async (req, res) => {
     res.end(JSON.stringify({ error: "Invalid request URL" }));
     return;
   }
+  const appRoute = req.method === "GET" && (url.pathname === "/" || /^\/settings(?:\/[^/]+)?\/?$/.test(url.pathname));
   const loginAssets = new Set(["/", "/index.html", "/style.css", "/auth-bootstrap.js", "/codex-brand.js"]);
   if (url.pathname === "/api/auth/status") {
     const authenticated = isAuthorizedHttpRequest(req, authSecret);
@@ -371,8 +372,8 @@ const server = createServer(async (req, res) => {
     return;
   }
   if (!isAuthorizedHttpRequest(req, authSecret)) {
-    if (loginAssets.has(url.pathname)) {
-      const file = resolvePublicAsset(url.pathname, publicDir);
+    if (appRoute || loginAssets.has(url.pathname)) {
+      const file = resolvePublicAsset(appRoute ? "/" : url.pathname, publicDir);
       if (file) {
         res.writeHead(200, { "content-type": mime[extname(file)] || "application/octet-stream", "cache-control": "no-store" });
         res.end(readFileSync(file));
@@ -594,7 +595,7 @@ const server = createServer(async (req, res) => {
     res.end(readFileSync(file));
     return;
   }
-  const file = resolvePublicAsset(url.pathname, publicDir);
+  const file = resolvePublicAsset(appRoute ? "/" : url.pathname, publicDir);
   if (!file) {
     res.writeHead(404, { "content-type": "text/plain; charset=utf-8" }); res.end("Not found"); return;
   }

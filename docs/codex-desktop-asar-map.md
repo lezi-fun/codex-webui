@@ -45,8 +45,8 @@ build.
 | 1 | Permission menu duplicates `custom` and omits `Approve for me` | Confirm fixed modes, managed profiles, visibility gates, descriptions, icons, and selected check | Normalize and deduplicate profiles; derive visibility from account/capabilities; add real-payload regression tests | Evidence complete |
 | 2 | Composer shows only `Low`; model name is absent | Confirm trigger composition and compact/collapsed behavior | Keep model and effort as separate visible labels; repair empty display-name fallback and responsive hiding | Evidence complete |
 | 3 | Context usage donut is missing | Confirm setting gate, data source, percentage calculation, tooltip, and footer position | Render from real token usage; hide only when native prerequisites fail | Evidence complete |
-| 4 | Main left sidebar and profile footer differ | Confirm new-chat/project hierarchy, footer height, identity rules, API/Copilot fallbacks, and menu contents | Rebuild structure and account variants without fabricated identity data | Evidence complete; measurements pending |
-| 5 | Settings entry and opening position differ | Confirm entry route, return behavior, sidebar grouping, search, and responsive navigation | Replace modal assumptions with route-like full app content and native navigation position | Evidence complete; measurements pending |
+| 4 | Main left sidebar and profile footer differ | Confirm new-chat/project hierarchy, footer height, identity rules, API/Copilot fallbacks, and menu contents | Rebuild structure and account variants without fabricated identity data | Implemented; browser screenshot verified |
+| 5 | Settings entry and opening position differ | Confirm entry route, return behavior, sidebar grouping, search, and responsive navigation | Replace modal assumptions with route-like full app content and native navigation position | Implemented; direct route and responsive layout verified |
 | 6 | Regression pass | Compare desktop and mobile screenshots plus real RPC payloads | Add focused browser tests, run unit/check/build, commit and push each item separately | Pending |
 
 ## Element map
@@ -108,6 +108,9 @@ build.
 | --- | --- |
 | Exported component | `webview/assets/settings-page-HTSlOIF2.js` exports `SettingsPage` |
 | Supporting chunks | `use-visible-settings-sections-ClZrtl0x.js`, `settings-route-state-h9bB_WA1.js`, `settings-host-dropdown-Bc872qtp.js`, and section-specific `*-settings-*.js` chunks |
+| Layout implementation | `eDu` in `app-initial-CKNQDTeE.js` renders `zoom-adjusted-viewport`, a fixed-width left panel with an `h-toolbar` spacer, and the settings content region. |
+| Navigation implementation | `Zt` in `settings-page-HTSlOIF2.js` renders Back to app, grouped icon rows, active state, host filtering, search, and the settings navigation label. `dn` renders the search field. |
+| Route implementation | `Cn` selects `/settings/:section/*`, replaces the route when a section changes, and passes the return action to the navigation. `En` returns through history, a remembered location, or `/`. |
 | Stable anchors | `settings.nav.back`, `settings.nav.ariaLabel`, `settings.search.label`, `settings.search.placeholder`, `/settings/${section}` |
 | Native placement | Settings is a routed page (`/settings/:section`), rendered with a settings sidebar and content layout. Closing/back returns to the prior app route or `/`; it is not modeled as a centered modal card. |
 | Native navigation | Sidebar supports Back to app, collapse/expand, grouped sections, icons, search, active state, host filtering, and responsive navigation. |
