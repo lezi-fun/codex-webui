@@ -349,7 +349,7 @@ const server = createServer(async (req, res) => {
     return;
   }
   const appRoute = req.method === "GET" && (url.pathname === "/" || /^\/settings(?:\/[^/]+)?\/?$/.test(url.pathname));
-  const loginAssets = new Set(["/", "/index.html", "/style.css", "/favicon.svg", "/auth-bootstrap.js", "/codex-brand.js"]);
+  const loginAssets = new Set(["/", "/index.html", "/style.css", "/favicon.svg", "/auth-bootstrap.js", "/i18n.js", "/codex-brand.js"]);
   if (url.pathname === "/api/auth/status") {
     const authenticated = isAuthorizedHttpRequest(req, authSecret);
     res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });

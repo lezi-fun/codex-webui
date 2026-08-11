@@ -21,6 +21,7 @@ const PUBLIC_ASSETS = new Set([
   "/style.css",
   "/favicon.svg",
   "/auth-bootstrap.js",
+  "/i18n.js",
   "/codex-brand.js",
   "/app.bundle.js",
   "/assets/codex-app-icon-128.png",

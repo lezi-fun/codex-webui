@@ -19,9 +19,11 @@ describe("WebUI server security boundary", () => {
     try {
       writeFileSync(join(root, "style.css"), "body{}\n");
       writeFileSync(join(root, "favicon.svg"), "<svg/>\n");
+      writeFileSync(join(root, "i18n.js"), "export {};\n");
       writeFileSync(join(root, "unknown.txt"), "not public\n");
       expect(resolvePublicAsset("/style.css", root)).toBe(realpathSync(join(root, "style.css")));
       expect(resolvePublicAsset("/favicon.svg", root)).toBe(realpathSync(join(root, "favicon.svg")));
+      expect(resolvePublicAsset("/i18n.js", root)).toBe(realpathSync(join(root, "i18n.js")));
       expect(resolvePublicAsset("/unknown.txt", root)).toBeNull();
       expect(resolvePublicAsset("/%ZZ", root)).toBeNull();
 
