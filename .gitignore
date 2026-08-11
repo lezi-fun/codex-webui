@@ -11,6 +11,7 @@ docs/app-server-schema/
 coverage/
 dist/
 /.codex-desktop-reference/
+docs/codex-desktop-asar-map.md
 /.playwright-cli/
 approval-e2e-*.png
 browser-smoke.png
