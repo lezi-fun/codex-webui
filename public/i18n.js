@@ -187,7 +187,9 @@ Object.assign(ZH_CN, {
   "Close panel": "关闭面板",
   "Close summary": "关闭摘要",
   "Open side panel tab": "打开右侧面板标签页",
+  "Task side panel": "任务右侧面板",
   "Image": "图片",
+  "Image unavailable": "图片不可用",
   "Open original": "打开原图",
   "Close image viewer": "关闭图片查看器",
   "Image could not be loaded.": "无法加载图片。",
@@ -275,6 +277,10 @@ Object.assign(ZH_CN, {
   "Parent folder": "上一级文件夹",
   "Go": "前往",
   "Side tasks started by this chat will appear here.": "此对话启动的子任务会显示在这里。",
+  "No side tasks": "没有子任务",
+  "Choose or switch the local project folder available to this WebUI.": "选择或切换此 WebUI 可访问的本地项目文件夹。",
+  "Choose project folder": "选择项目文件夹",
+  "Open Browser from the right panel to keep it beside the chat.": "请从右侧面板打开浏览器，以便与对话并排显示。",
   "Scheduled task data requires the native desktop bridge.": "计划任务数据需要原生桌面桥接。",
   "Computer Use controls require the native desktop bridge.": "电脑操作控件需要原生桌面桥接。",
   "Plan data is not exposed by app-server.": "app-server 未提供计划数据。",
@@ -395,6 +401,7 @@ function translateTextValue(value, i18n) {
 
 function isExcluded(node) {
   const element = node?.nodeType === 1 ? node : node?.parentElement;
+  if (element?.closest?.("[data-i18n-ui]")) return false;
   return Boolean(element?.closest?.(DOM_I18N_EXCLUDE));
 }
 

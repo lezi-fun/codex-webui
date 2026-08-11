@@ -32,10 +32,12 @@ describe("WebUI i18n", () => {
     expect(translate("Worked for 2m 8s", "zh-CN")).toBe("处理耗时 2m 8s");
     expect(translate("Custom (config.toml)", "zh-CN")).toBe("自定义（config.toml）");
     expect(translate("Unrestricted access to the internet and any file on your computer", "zh-CN")).toBe("不受限制地访问互联网和此电脑上的任意文件");
+    expect(translate("Choose project folder", "zh-CN")).toBe("选择项目文件夹");
+    expect(translate("No side tasks", "zh-CN")).toBe("没有子任务");
   });
 
   test("translates dynamic interface text without changing conversation content", async () => {
-    const dom = new JSDOM("<!doctype html><html><body><button title='Open settings'>Settings</button><article class='message-text'>Settings</article><div class='activity-output'>Running command</div><div class='review-hunks'>Settings</div></body></html>", { url: "http://localhost" });
+    const dom = new JSDOM("<!doctype html><html><body><button title='Open settings'>Settings</button><article class='message-text'>Settings</article><div class='activity-output' id='raw-output'>Running command</div><div class='activity-output'><div id='ui-output' data-i18n-ui>Image unavailable</div></div><div class='review-hunks'>Settings</div></body></html>", { url: "http://localhost" });
     const i18n = createI18n({ storage: dom.window.localStorage, languages: ["en"] });
     const binding = createDomI18n(i18n, { root: dom.window.document });
     i18n.setPreference("zh-CN");
@@ -44,7 +46,8 @@ describe("WebUI i18n", () => {
     expect(button.textContent).toBe("设置");
     expect(button.title).toBe("打开设置");
     expect(dom.window.document.querySelector(".message-text")!.textContent).toBe("Settings");
-    expect(dom.window.document.querySelector(".activity-output")!.textContent).toBe("Running command");
+    expect(dom.window.document.querySelector("#raw-output")!.textContent).toBe("Running command");
+    expect(dom.window.document.querySelector("#ui-output")!.textContent).toBe("图片不可用");
     expect(dom.window.document.querySelector(".review-hunks")!.textContent).toBe("Settings");
     expect(dom.window.document.documentElement.lang).toBe("zh-CN");
 
@@ -58,6 +61,7 @@ describe("WebUI i18n", () => {
     expect(button.textContent).toBe("Settings");
     expect(button.title).toBe("Open settings");
     expect(status.textContent).toBe("Running command");
+    expect(dom.window.document.querySelector("#ui-output")!.textContent).toBe("Image unavailable");
     binding.disconnect();
   });
 });
