@@ -29,7 +29,7 @@ const chatgpt=await page.evaluate(()=>({
   product:document.querySelector('#productModeButton strong')?.textContent.trim(),
   newChat:document.querySelector('#newTask span:nth-child(2)')?.textContent.trim(),
   search:document.querySelector('#threadSearch')?.placeholder,
-  section:document.querySelector('.sidebar-section-label')?.textContent.trim(),
+  projects:document.querySelector('#projectButton')?.textContent.trim(),
   footerName:document.querySelector('#accountName')?.textContent.trim(),
   footerMeta:document.querySelector('#accountFooterMeta')?.textContent.trim(),
   buttonLabel:document.querySelector('#accountButton')?.getAttribute('aria-label'),
@@ -148,6 +148,8 @@ const apiKey=await page.evaluate(()=>({
   usageHidden:document.querySelector('#accountUsage')?.hidden,
   settingsHidden:document.querySelector('#accountSettings')?.hidden,
   logoutHidden:document.querySelector('#accountLogout')?.hidden,
+  avatarClass:document.querySelector('#accountAvatar')?.className,
+  avatarIcon:document.querySelectorAll('#accountAvatar svg').length,
   buttonLabel:document.querySelector('#accountButton')?.getAttribute('aria-label'),
 }));
 const apiSettings=await page.evaluate(()=>({
@@ -189,7 +191,7 @@ console.log(JSON.stringify({chatgpt,settingsShell,configuration,settingsSearch,s
 await browser.close();
 if(
   errors.length||
-  chatgpt.product!=='Codex'||chatgpt.newChat!=='New chat'||chatgpt.search!=='Search'||chatgpt.section!=='Projects'||chatgpt.footerName!=='Desktop User'||chatgpt.footerMeta!==''||chatgpt.buttonLabel!=='Open profile menu'||chatgpt.profileHidden||chatgpt.usageHidden||chatgpt.logoutHidden||
+  chatgpt.product!=='Codex'||chatgpt.newChat!=='New chat'||chatgpt.search!=='Search chats'||chatgpt.projects!=='Projects'||chatgpt.footerName!=='Desktop User'||chatgpt.footerMeta!==''||chatgpt.buttonLabel!=='Open profile menu'||chatgpt.profileHidden||chatgpt.usageHidden||chatgpt.logoutHidden||
   settingsShell.groups.join('|')!=='Personal|Integrations|Coding|Archived'||!settingsShell.pages.includes('Configuration')||!settingsShell.pages.includes('Cloud preferences')||!settingsShell.fullPage||settingsShell.back!=='Back to app'||settingsShell.route!=='/settings/general-settings'||settingsShell.modal||settingsShell.navSpacer!==46||configuration.title!=='Configuration'||configuration.route!=='/settings/agent'||!configuration.values.some(value=>value.startsWith('Model'))||settingsSearch.visible.join('|')!=='Browser'||settingsSearch.groups.join('|')!=='Integrations'||!settingsSearch.clearVisible||
   !settings.open||settings.title!=='Settings'||settings.page!=='General'||settings.permission!=='Ask for approval'||!settings.autoReviewHidden||!settings.autoReviewChecked||!settings.fullAccessChecked||
   !permissionMenu.open||permissionMenu.options.join('|')!=='Ask for approval|Approve for me|Full access|team-safe|managed-blocked|Custom (config.toml)'||!permissionMenu.blockedDisabled||
@@ -198,5 +200,5 @@ if(
   custom.selected.kind!=='custom'||Object.keys(custom.thread).length!==0||custom.turn.permissions!==null||custom.turn.approvalPolicy!==null||custom.turn.approvalsReviewer!==null||custom.turn.sandboxPolicy!==null||
   fullAccess.label!=='Full access'||fullAccess.mode!=='full-access'||fullAccess.selected.approvalPolicy!=='never'||fullAccess.selected.sandbox!=='danger-full-access'||fullAccess.thread.approvalPolicy!=='never'||fullAccess.thread.approvalsReviewer!=='user'||fullAccess.thread.sandbox!=='danger-full-access'||fullAccess.turn.sandboxPolicy.type!=='dangerFullAccess'||
   fullAccessSettingOff.checked||fullAccessSettingOff.visible||fullAccessSettingOff.mode!=='default'||!fullAccessSettingOn.checked||!fullAccessSettingOn.visible||fullAccessSettingOn.mode!=='default'||
-  apiKey.footerName!=='API key'||apiKey.footerMeta!==''||apiKey.buttonLabel!=='Open settings'||!apiKey.profileHidden||!apiKey.usageHidden||apiKey.settingsHidden||!apiKey.logoutHidden||!apiSettings.autoReviewHidden||mobileSettings.horizontalOverflow||mobileSettings.dialog.width!==mobileSettings.viewport.width||mobileSettings.pageVisible!=='true'||mobileSettings.navWidth!==0||mobileSettings.contentWidth!==mobileSettings.viewport.width||mobileSettingsNavigation.pageVisible!=='false'||mobileSettingsNavigation.navWidth!==mobileSettings.viewport.width||mobileSettingsNavigation.contentWidth!==0||directSettings.route!=='/settings/browser-use'||directSettings.title!=='Browser'||directSettings.modal||directSettings.closedRoute!=='/'
+  apiKey.footerName!=='API key'||apiKey.footerMeta!==''||apiKey.buttonLabel!=='Open settings'||apiKey.avatarClass!=='account-avatar account-settings-icon'||apiKey.avatarIcon!==1||!apiKey.profileHidden||!apiKey.usageHidden||apiKey.settingsHidden||!apiKey.logoutHidden||!apiSettings.autoReviewHidden||mobileSettings.horizontalOverflow||mobileSettings.dialog.width!==mobileSettings.viewport.width||mobileSettings.pageVisible!=='true'||mobileSettings.navWidth!==0||mobileSettings.contentWidth!==mobileSettings.viewport.width||mobileSettingsNavigation.pageVisible!=='false'||mobileSettingsNavigation.navWidth!==mobileSettings.viewport.width||mobileSettingsNavigation.contentWidth!==0||directSettings.route!=='/settings/browser-use'||directSettings.title!=='Browser'||directSettings.modal||directSettings.closedRoute!=='/'
 )process.exit(1);

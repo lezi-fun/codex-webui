@@ -37,17 +37,21 @@
 
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-top">
-      <button class="sidebar-product" id="productModeButton" type="button" aria-label="Switch mode, current mode: Codex"><span class="sidebar-product-mark" id="sidebarCodexMark"></span><strong>Codex</strong><span class="icon-slot chevron" data-icon="chevronDown"></span></button>
+      <div class="sidebar-mode-row">
+        <button class="sidebar-product" id="productModeButton" type="button" aria-label="Switch mode, current mode: Codex"><strong>Codex</strong><span class="icon-slot chevron" data-icon="chevronDown"></span></button>
+        <button class="sidebar-toolbar-button" id="sidebarSearchButton" type="button" title="Search" aria-label="Search chats" aria-expanded="false" aria-controls="sidebarSearchPanel"><span class="icon-slot" data-icon="search"></span></button>
+      </div>
+      <div class="sidebar-search-panel" id="sidebarSearchPanel" hidden>
+        <label class="sidebar-search-field"><span class="icon-slot" data-icon="search"></span><input id="threadSearch" type="search" placeholder="Search chats" aria-label="Search chats"></label>
+        <button class="sidebar-search-close" id="sidebarSearchClose" type="button" title="Close search" aria-label="Close search"><span class="icon-slot" data-icon="x"></span></button>
+      </div>
       <button class="sidebar-row new-task" id="newTask"><span class="icon-slot" data-icon="plus"></span><span>New chat</span><kbd>⌘K</kbd></button>
-      <label class="sidebar-row search-box"><span class="icon-slot" data-icon="search"></span><input id="threadSearch" type="search" placeholder="Search" aria-label="Search"></label>
-      <div class="sidebar-section-label">Projects</div>
-      <button class="sidebar-row project-button" id="projectButton">
-        <span class="project-glyph icon-slot" data-icon="folderOpen"></span>
-        <span class="project-copy"><strong id="projectName">codex-webui</strong><span id="projectPath">~/projects/codex-webui</span></span>
-        <span class="icon-slot chevron" data-icon="chevronDown"></span>
-      </button>
     </div>
-    <div class="thread-list" id="threadList"><div class="list-state">Connecting to Codex…</div></div>
+    <div class="sidebar-scroll">
+      <span id="projectName" hidden>codex-webui</span><span id="projectPath" hidden>~/projects/codex-webui</span>
+      <button class="sidebar-row projects-button" id="projectButton" type="button"><span class="icon-slot" data-icon="folderOpen"></span><span>Projects</span></button>
+      <div class="thread-list" id="threadList"><div class="list-state">Connecting to Codex…</div></div>
+    </div>
     <div class="sidebar-footer">
       <div class="account-menu" id="accountMenu" hidden>
         <div class="account-menu-identity"><span class="account-menu-avatar account-initials" id="accountMenuAvatar">?</span><span><strong id="accountMenuName">Settings</strong><small id="accountMenuSubtitle"></small></span></div>
@@ -60,11 +64,18 @@
         <div class="account-menu-status"><span class="status-dot" id="statusDot"></span><span id="statusText">Connecting</span></div>
         <button type="button" class="account-menu-row" id="accountLogout"><span class="icon-slot" data-icon="logOut"></span><span>Log out</span></button>
       </div>
-      <button class="account-button" id="accountButton" type="button" aria-expanded="false" aria-controls="accountMenu">
-        <span class="account-avatar account-initials" id="accountAvatar">?</span>
-        <span class="account-button-copy"><strong id="accountName">Settings</strong><small id="accountFooterMeta" aria-hidden="true"></small></span>
-        <span class="icon-slot account-chevron" data-icon="chevronDown"></span>
-      </button>
+      <div class="sidebar-footer-row">
+        <button class="account-button" id="accountButton" type="button" aria-expanded="false" aria-controls="accountMenu">
+          <span class="account-avatar account-initials" id="accountAvatar">?</span>
+          <span class="account-button-copy"><strong id="accountName">Settings</strong><small id="accountFooterMeta" aria-hidden="true"></small></span>
+        </button>
+        <button class="sidebar-help-button" id="sidebarHelpButton" type="button" title="Help" aria-label="Help" aria-expanded="false" aria-controls="sidebarHelpMenu"><span class="icon-slot" data-icon="circleHelp"></span></button>
+      </div>
+      <div class="sidebar-help-menu" id="sidebarHelpMenu" hidden>
+        <button type="button" id="sidebarHelpSettings"><span class="icon-slot" data-icon="wrench"></span><span>Settings</span></button>
+        <button type="button" id="sidebarHelpShortcuts"><span class="icon-slot" data-icon="command"></span><span>Keyboard shortcuts</span></button>
+        <a href="https://developers.openai.com/codex/" target="_blank" rel="noopener noreferrer"><span class="icon-slot" data-icon="circleHelp"></span><span>Help</span></a>
+      </div>
       <span id="threadSource" hidden>local</span>
     </div>
   </aside>

@@ -14,6 +14,8 @@ const box=async selector=>page.locator(selector).first().evaluate(element=>{
     height:rect.height,
     paddingLeft:parseFloat(style.paddingLeft),
     borderRadius:parseFloat(style.borderRadius),
+    fontSize:parseFloat(style.fontSize),
+    transitionDuration:style.transitionDuration,
   };
 });
 const result={
@@ -22,12 +24,17 @@ const result={
   fixedContext:await page.locator('.composer-context').count(),
   projectControl:await page.locator('#projectButton').count(),
   hasAccountName:Boolean((await page.locator('#accountName').textContent())?.trim()),
-  accountAvatar:await page.locator('#accountAvatar > img, #accountAvatar.account-initials').count(),
+  accountAvatar:await page.locator('#accountAvatar > img, #accountAvatar.account-initials, #accountAvatar.account-settings-icon').count(),
   accountButton:await box('#accountButton'),
   sidebar:await box('#sidebar'),
   newTask:await box('#newTask'),
-  search:await box('.search-box'),
+  search:await box('#sidebarSearchButton'),
+  productLabel:await box('#productModeButton strong'),
+  projectRow:await box('.sidebar-project-row'),
   firstThread:await box('.thread-item'),
+  footer:await box('.sidebar-footer-row'),
+  projectGroups:await page.locator('.sidebar-project-group').count(),
+  expandedProjects:await page.locator('.sidebar-project-row[aria-expanded="true"]').count(),
   folderDialog:await page.locator('#folderDialog').count(),
   scrollWidth:await page.evaluate(()=>document.documentElement.scrollWidth),
   innerWidth:await page.evaluate(()=>innerWidth),
@@ -43,14 +50,21 @@ const valid=result.title?.includes('What can I help with in')
   &&result.accountAvatar===1
   &&result.sidebar.width===275
   &&result.newTask.height===30
-  &&result.search.height===30
+  &&result.search.width===32
+  &&result.search.height===32
+  &&result.productLabel.fontSize===17
+  &&result.projectRow.height===30
   &&result.firstThread.height===30
+  &&result.footer.height===46
   &&result.accountButton.height===30
   &&result.newTask.paddingLeft===8
-  &&result.firstThread.paddingLeft===8
+  &&result.firstThread.paddingLeft===32
   &&result.accountButton.paddingLeft===8
   &&result.newTask.borderRadius===10
   &&result.firstThread.borderRadius===10
   &&result.accountButton.borderRadius===10
+  &&result.projectGroups>=1
+  &&result.expandedProjects>=1
+  &&result.sidebar.transitionDuration.split(',').every(value=>value.trim()==='0.5s')
   &&result.scrollWidth<=result.innerWidth;
 if(!valid)process.exit(1);
