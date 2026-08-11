@@ -30,6 +30,8 @@ describe("WebUI i18n", () => {
     expect(translate("Hello {name}", "en", { name: "Codex" })).toBe("Hello Codex");
     expect(translate("3 changed files", "zh-CN")).toBe("3 个文件已更改");
     expect(translate("Worked for 2m 8s", "zh-CN")).toBe("处理耗时 2m 8s");
+    expect(translate("Custom (config.toml)", "zh-CN")).toBe("自定义（config.toml）");
+    expect(translate("Unrestricted access to the internet and any file on your computer", "zh-CN")).toBe("不受限制地访问互联网和此电脑上的任意文件");
   });
 
   test("translates dynamic interface text without changing conversation content", async () => {
