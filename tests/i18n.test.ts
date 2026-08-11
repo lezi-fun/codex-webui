@@ -33,7 +33,7 @@ describe("WebUI i18n", () => {
   });
 
   test("translates dynamic interface text without changing conversation content", async () => {
-    const dom = new JSDOM("<!doctype html><html><body><button title='Open settings'>Settings</button><article class='message-text'>Settings</article></body></html>", { url: "http://localhost" });
+    const dom = new JSDOM("<!doctype html><html><body><button title='Open settings'>Settings</button><article class='message-text'>Settings</article><div class='activity-output'>Running command</div><div class='review-hunks'>Settings</div></body></html>", { url: "http://localhost" });
     const i18n = createI18n({ storage: dom.window.localStorage, languages: ["en"] });
     const binding = createDomI18n(i18n, { root: dom.window.document });
     i18n.setPreference("zh-CN");
@@ -42,6 +42,8 @@ describe("WebUI i18n", () => {
     expect(button.textContent).toBe("设置");
     expect(button.title).toBe("打开设置");
     expect(dom.window.document.querySelector(".message-text")!.textContent).toBe("Settings");
+    expect(dom.window.document.querySelector(".activity-output")!.textContent).toBe("Running command");
+    expect(dom.window.document.querySelector(".review-hunks")!.textContent).toBe("Settings");
     expect(dom.window.document.documentElement.lang).toBe("zh-CN");
 
     const status = dom.window.document.createElement("span");
