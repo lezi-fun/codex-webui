@@ -29,7 +29,7 @@ const running=await page.evaluate(()=>({
   interactiveCommand:document.querySelector('[data-item-id="runtime-interactive"] + .activity-output .command-shell-command code')?.textContent,
   fileLabel:document.querySelector('[data-item-id="runtime-file"] .activity-label')?.textContent.trim(),
   filePath:document.querySelector('[data-item-id="runtime-file"] + .activity-output .file-change-output-head span:nth-of-type(2)')?.textContent.trim(),
-  fileDiff:document.querySelector('[data-item-id="runtime-file"] + .activity-output pre')?.textContent,
+  fileDiff:document.querySelector('[data-item-id="runtime-file"] + .activity-output')?.textContent,
   fileExpanded:document.querySelector('[data-item-id="runtime-file"]')?.getAttribute('aria-expanded'),
 }));
 
@@ -39,18 +39,33 @@ const completedLabel=await page.locator('[data-item-id="runtime-file"] .activity
 
 await page.evaluate(()=>{
   const api=globalThis.__codexWebuiDebug;
-  api.syncTurnSnapshot({id:'synced-turn',status:'inProgress',itemsView:'full',items:[{id:'synced-command',type:'commandExecution',status:'inProgress',command:'bun run build',aggregatedOutput:'building\n'}]});
+  api.syncTurnSnapshot({id:'synced-turn',status:'inProgress',itemsView:'full',items:[
+    {id:'synced-command',type:'commandExecution',status:'inProgress',command:'bun run build',aggregatedOutput:'building\n'},
+    {id:'synced-user',type:'userMessage',content:[{type:'text',text:'Steer this task from the CLI.'}]},
+    {id:'synced-file',type:'fileChange',status:'completed',changes:[{path:'/tmp/host-live.ts',kind:{type:'update'},diff:'@@ -1 +1 @@\n-export const live = false;\n+export const live = true;'}]},
+  ]});
 });
 await page.click('[data-item-id="synced-command"]');
 await page.evaluate(()=>{
   const api=globalThis.__codexWebuiDebug;
-  api.syncTurnSnapshot({id:'synced-turn',status:'inProgress',itemsView:'full',items:[{id:'synced-command',type:'commandExecution',status:'inProgress',command:'bun run build',aggregatedOutput:'building\nbundled\n'}]});
+  api.syncTurnSnapshot({id:'synced-turn',status:'inProgress',itemsView:'full',items:[
+    {id:'synced-command',type:'commandExecution',status:'inProgress',command:'bun run build',aggregatedOutput:'building\nbundled\n'},
+    {id:'synced-user',type:'userMessage',content:[{type:'text',text:'Steer this task from the CLI.'}]},
+    {id:'synced-file',type:'fileChange',status:'completed',changes:[{path:'/tmp/host-live.ts',kind:{type:'update'},diff:'@@ -1 +1 @@\n-export const live = false;\n+export const live = true;'}]},
+  ]});
 });
+await page.click('[data-item-id="synced-file"]');
 const syncing=await page.evaluate(()=>({
   output:document.querySelector('[data-item-id="synced-command"] + .activity-output pre')?.textContent,
   expanded:document.querySelector('[data-item-id="synced-command"]')?.getAttribute('aria-expanded'),
   stopping:document.querySelector('#sendButton')?.classList.contains('stop'),
   turnId:document.querySelector('#sendButton')?.dataset.turnId,
+  steering:[...document.querySelectorAll('.user-message')].some(node=>node.textContent==='Steer this task from the CLI.'),
+  liveFile:document.querySelector('[data-item-id="synced-file"] + .activity-output')?.textContent,
+  addedLine:document.querySelector('[data-item-id="synced-file"] + .activity-output .review-line.add')?.textContent,
+  deletedLine:document.querySelector('[data-item-id="synced-file"] + .activity-output .review-line.delete')?.textContent,
+  addedBackground:getComputedStyle(document.querySelector('[data-item-id="synced-file"] + .activity-output .review-line.add')).backgroundColor,
+  deletedBackground:getComputedStyle(document.querySelector('[data-item-id="synced-file"] + .activity-output .review-line.delete')).backgroundColor,
 }));
 await page.evaluate(()=>{
   const api=globalThis.__codexWebuiDebug;
@@ -64,7 +79,17 @@ const recovered=await page.evaluate(()=>({
   reviewText:document.querySelector('#changeList')?.textContent,
   reviewSource:globalThis.__codexWebuiDebug.state.activeReview?.source,
 }));
+await page.evaluate(()=>{
+  const root=document.querySelector('#conversation'),filler=document.createElement('div');
+  filler.style.height='2400px';
+  filler.dataset.openThreadScrollFixture='';
+  root.append(filler);
+  root.scrollTop=0;
+  globalThis.__codexWebuiDebug.scrollOpenedThreadToBottom();
+});
+await page.waitForFunction(()=>{const root=document.querySelector('#conversation');return root.scrollHeight-root.scrollTop-root.clientHeight<2});
+const openedThreadScrollGap=await page.evaluate(()=>{const root=document.querySelector('#conversation');return root.scrollHeight-root.scrollTop-root.clientHeight});
 
-console.log(JSON.stringify({running,completedLabel,syncing,recovered,errors},null,2));
+console.log(JSON.stringify({running,completedLabel,syncing,recovered,openedThreadScrollGap,errors},null,2));
 await browser.close();
-if(errors.length||running.commandLabel!=='Running command'||running.commandOutput!=='starting tests\n'||running.interactiveCommand!=='echo interactive'||running.fileLabel!=='Editing files'||!running.filePath?.endsWith('runtime.ts')||!running.fileDiff?.includes('+new')||running.fileExpanded!=='true'||completedLabel?.trim()!=='Edited a file'||syncing.output!=='building\nbundled\n'||syncing.expanded!=='true'||!syncing.stopping||syncing.turnId!=='synced-turn'||!recovered.stopped||!recovered.reviewPath?.endsWith('runtime.ts')||!recovered.reviewText?.includes('old')||!recovered.reviewText?.includes('new')||recovered.reviewSource!=='fileChange')process.exit(1);
+if(errors.length||running.commandLabel!=='Running command'||running.commandOutput!=='starting tests\n'||running.interactiveCommand!=='echo interactive'||running.fileLabel!=='Editing files'||!running.filePath?.endsWith('runtime.ts')||!running.fileDiff?.includes('+new')||running.fileExpanded!=='true'||completedLabel?.trim()!=='Edited a file'||syncing.output!=='building\nbundled\n'||syncing.expanded!=='true'||!syncing.stopping||syncing.turnId!=='synced-turn'||!syncing.steering||!syncing.liveFile?.includes('host-live.ts')||!syncing.addedLine?.includes('+export const live = true;')||!syncing.deletedLine?.includes('−export const live = false;')||syncing.addedBackground===syncing.deletedBackground||!recovered.stopped||!recovered.reviewPath?.endsWith('host-live.ts')||!recovered.reviewText?.includes('export const live = true;')||!recovered.reviewText?.includes('export const live = false;')||recovered.reviewSource!=='fileChange'||openedThreadScrollGap>=2)process.exit(1);
