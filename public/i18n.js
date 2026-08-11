@@ -133,6 +133,7 @@ Object.assign(ZH_CN, {
   "Theme": "主题",
   "System": "系统",
   "Language": "语言",
+  "Interface language": "界面语言",
   "System default": "跟随系统",
   "Interface scale": "界面缩放",
   "Default": "默认",

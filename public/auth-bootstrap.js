@@ -2,8 +2,9 @@ import { codexInterfaceMark } from './codex-brand.js';
 import { createDomI18n, createI18n } from './i18n.js';
 
 const $=selector=>document.querySelector(selector);
-const i18n=createI18n();
-createDomI18n(i18n);
+const i18n=globalThis.__codexWebuiI18n||createI18n();
+globalThis.__codexWebuiI18n=i18n;
+globalThis.__codexWebuiDomI18n=globalThis.__codexWebuiDomI18n||createDomI18n(i18n);
 const t=message=>i18n.t(message);
 
 async function loadApp(){

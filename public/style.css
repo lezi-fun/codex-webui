@@ -718,11 +718,13 @@ body.sidebar-hidden .sidebar>div{opacity:0}
 .settings-page-heading{min-height:34px;display:flex;align-items:center;margin-bottom:26px}
 .settings-page-heading h1{color:var(--app-text);font-size:22px;line-height:28px;font-weight:500;letter-spacing:0}
 .settings-section-title{padding:2px 0 8px;color:var(--app-text-tertiary);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.settings-section-spaced{margin-top:28px}
 .settings-row{min-height:58px;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:10px 0;border-bottom:1px solid var(--app-border-default);font-size:12px}
 .settings-row>span:first-child{display:flex;flex-direction:column;gap:3px}
 .settings-row strong{font-weight:560}
 .settings-row small{color:var(--app-text-tertiary);font-size:11px}
 .settings-row:not(.settings-toggle-row)>span:last-child{max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--app-text-secondary)}
+.settings-select{min-width:132px;height:30px;padding:0 28px 0 9px;border:1px solid var(--app-border-default);border-radius:7px;background:var(--app-fog);color:var(--app-text);font:inherit}
 .settings-readonly-row{min-height:54px}
 .settings-toggle-row{position:relative;cursor:pointer}
 .settings-toggle-row[hidden]{display:none}
