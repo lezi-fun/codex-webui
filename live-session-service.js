@@ -18,6 +18,18 @@ function commandFromToolInput(input) {
   return quotedProperty(input, "cmd");
 }
 
+function contentChangeDiff(change) {
+  if (!change || !["add", "delete"].includes(change.type) || typeof change.content !== "string") return "";
+  const lines = change.content.replace(/\r\n/g, "\n").split("\n");
+  if (lines.at(-1) === "") lines.pop();
+  if (!lines.length) return "";
+  const count = lines.length;
+  const added = change.type === "add";
+  const header = added ? `@@ -0,0 +1,${count} @@` : `@@ -1,${count} +0,0 @@`;
+  const prefix = added ? "+" : "-";
+  return `${header}\n${lines.map(line => prefix + line).join("\n")}\n`;
+}
+
 function outputDetails(raw) {
   const text = contentText(raw);
   const marker = text.lastIndexOf("\nOutput:\n");
@@ -54,7 +66,16 @@ function reasoningItem(payload) {
 }
 
 function newState() {
-  return { active: false, turn: null, itemIndex: new Map(), commandCalls: new Map(), activeCommandId: null, lastEventAt: null };
+  return {
+    active: false,
+    turn: null,
+    itemIndex: new Map(),
+    commandCalls: new Map(),
+    activeCommandId: null,
+    userSequence: 0,
+    patchSequence: 0,
+    lastEventAt: null,
+  };
 }
 
 function upsertItem(state, item) {
@@ -90,6 +111,8 @@ export function applyRolloutEvent(state, event) {
     state.itemIndex.clear();
     state.commandCalls.clear();
     state.activeCommandId = null;
+    state.userSequence = 0;
+    state.patchSequence = 0;
     state.turn = {
       id: payload.turn_id,
       status: "inProgress",
@@ -106,6 +129,39 @@ export function applyRolloutEvent(state, event) {
     if (Number.isFinite(payload.completed_at)) state.turn.completedAt = payload.completed_at;
     for (const item of state.turn.items) if (item.status === "inProgress") item.status = "completed";
     state.activeCommandId = null;
+    return state;
+  }
+  if (event.type === "event_msg" && payload.type === "user_message") {
+    state.userSequence += 1;
+    const text = String(payload.message || "").trim();
+    // thread/read already owns the opening prompt; rollout is needed for later CLI steering messages.
+    if (state.userSequence > 1 && text) {
+      upsertItem(state, {
+        id: `host-user-${state.turn.id}-${state.userSequence}`,
+        type: "userMessage",
+        content: [{ type: "text", text }],
+        status: "completed",
+      });
+    }
+    return state;
+  }
+  if (event.type === "event_msg" && payload.type === "patch_apply_end") {
+    if (payload.turn_id && payload.turn_id !== state.turn.id) return state;
+    const changes = Object.entries(payload.changes || {}).map(([path, change]) => ({
+      path,
+      kind: { type: change?.type || "update", move_path: change?.move_path || null },
+      diff: change?.unified_diff || contentChangeDiff(change),
+    }));
+    if (changes.length) {
+      state.patchSequence += 1;
+      upsertItem(state, {
+        id: `host-patch-${state.turn.id}-${state.patchSequence}`,
+        type: "fileChange",
+        status: payload.success === false ? "failed" : payload.status || "completed",
+        changes,
+        aggregatedOutput: payload.stderr || payload.stdout || "",
+      });
+    }
     return state;
   }
   if (event.type !== "response_item") return state;
