@@ -3,13 +3,17 @@ import { launchOptions } from './browser-runtime.mjs';
 
 const base=process.env.CODEX_WEBUI_TEST_URL||'http://127.0.0.1:8899';
 const browser=await chromium.launch(launchOptions());
-const page=await browser.newPage({viewport:{width:1120,height:760},colorScheme:'dark'});
+const context=await browser.newContext({viewport:{width:1120,height:760},colorScheme:'dark'});
+await context.addInitScript(()=>{if(window===window.top)localStorage.setItem('codex-webui-locale','en')});
+const page=await context.newPage();
 page.setDefaultTimeout(7000);
 const errors=[];
 page.on('pageerror',error=>errors.push(error.message));
 await page.goto(base,{waitUntil:'networkidle'});
 await page.waitForFunction(()=>globalThis.__codexWebuiDebug?.renderAccount);
 await page.waitForFunction(()=>globalThis.__codexWebuiDebug.state.account!==null);
+await page.waitForFunction(()=>globalThis.__codexWebuiDebug.state.connected);
+await page.evaluate(()=>globalThis.__codexWebuiDebug.loadInitial());
 
 await page.evaluate(()=>{
   const api=globalThis.__codexWebuiDebug;
@@ -173,7 +177,7 @@ const mobileSettingsNavigation=await page.evaluate(()=>({
   contentWidth:document.querySelector('.settings-content').getBoundingClientRect().width,
 }));
 
-const directPage=await browser.newPage({viewport:{width:1120,height:760},colorScheme:'dark'});
+const directPage=await context.newPage();
 directPage.setDefaultTimeout(7000);
 await directPage.goto(new URL('/settings/browser-use',base).href,{waitUntil:'networkidle'});
 await directPage.waitForFunction(()=>document.querySelector('#settingsDialog')?.open);

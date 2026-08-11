@@ -21,6 +21,7 @@ const localhost={
 const baseLaunch=launchOptions();
 const browser=await chromium.launch({...baseLaunch,args:[...(baseLaunch.args||[]),'--no-proxy-server']});
 const context=await browser.newContext({viewport:{width:1018,height:820},colorScheme:'dark'});
+await context.addInitScript(()=>{if(window===window.top)localStorage.setItem('codex-webui-locale','en')});
 const page=await context.newPage();
 const lanAddress=Object.values(networkInterfaces()).flat().find(entry=>entry?.family==='IPv4'&&!entry.internal)?.address;
 if(!lanAddress)throw new Error('No LAN IPv4 address available for password login test');

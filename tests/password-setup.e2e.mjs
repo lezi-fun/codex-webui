@@ -51,6 +51,7 @@ try{
   const baseLaunch=launchOptions();
   browser=await chromium.launch({...baseLaunch,args:[...(baseLaunch.args||[]),'--no-proxy-server']});
   const context=await browser.newContext({viewport:{width:1018,height:820},colorScheme:'dark'});
+  await context.addInitScript(()=>{if(window===window.top)localStorage.setItem('codex-webui-locale','en')});
   const page=await context.newPage();
   await page.goto(`${baseUrl}/`,{waitUntil:'domcontentloaded'});
   await page.waitForSelector('#passwordGate:not([hidden])',{timeout:30_000});
@@ -97,6 +98,7 @@ try{
   server=await startServer();
   const restartStatus=await fetch(`${baseUrl}/api/auth/status`).then(response=>response.json());
   const loginContext=await browser.newContext({viewport:{width:1018,height:820},colorScheme:'dark'});
+  await loginContext.addInitScript(()=>{if(window===window.top)localStorage.setItem('codex-webui-locale','en')});
   const loginPage=await loginContext.newPage();
   await loginPage.goto(`${baseUrl}/`,{waitUntil:'domcontentloaded'});
   await loginPage.waitForSelector('#passwordGate:not([hidden])',{timeout:30_000});
