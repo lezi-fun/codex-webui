@@ -18,8 +18,10 @@ describe("WebUI server security boundary", () => {
     const root = mkdtempSync(join(tmpdir(), "codex-webui-public-"));
     try {
       writeFileSync(join(root, "style.css"), "body{}\n");
+      writeFileSync(join(root, "favicon.svg"), "<svg/>\n");
       writeFileSync(join(root, "unknown.txt"), "not public\n");
       expect(resolvePublicAsset("/style.css", root)).toBe(realpathSync(join(root, "style.css")));
+      expect(resolvePublicAsset("/favicon.svg", root)).toBe(realpathSync(join(root, "favicon.svg")));
       expect(resolvePublicAsset("/unknown.txt", root)).toBeNull();
       expect(resolvePublicAsset("/%ZZ", root)).toBeNull();
 

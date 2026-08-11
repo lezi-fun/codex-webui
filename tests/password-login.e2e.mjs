@@ -30,6 +30,7 @@ const preAuth={
   health:await fetch(`http://${lanAddress}:${port}/api/health`).then(response=>response.status),
   events:await fetch(`http://${lanAddress}:${port}/api/events`).then(response=>response.status),
   bundle:await fetch(`http://${lanAddress}:${port}/app.bundle.js`).then(response=>response.status),
+  favicon:await fetch(`http://${lanAddress}:${port}/favicon.svg`).then(response=>response.status),
   appLoaded:await page.evaluate(()=>Boolean(globalThis.__codexWebuiDebug)),
 };
 await page.evaluate(()=>document.fonts.clear?.());
@@ -57,4 +58,4 @@ console.log(JSON.stringify({localhost,preAuth,initial,wrong,cookie:{httpOnly:coo
 await browser.close();
 server.kill('SIGTERM');
 await new Promise(resolve=>server.once('exit',resolve));
-if(!localhost.status?.authenticated||localhost.health!==200||preAuth.health!==401||preAuth.events!==401||preAuth.bundle!==401||preAuth.appLoaded||!initial.gate||initial.app!=='true'||!initial.mark||initial.input!=='password'||initial.button!=='Log in'||initial.body||!wrong?.includes('Incorrect password')||!cookie?.httpOnly||cookie?.sameSite!=='Strict'||health.status!==200||health.json?.ok!==true||sse?.type!=='bridge/status'||!['connecting','connected'].includes(sse.status)||bundle!==200)process.exit(1);
+if(!localhost.status?.authenticated||localhost.health!==200||preAuth.health!==401||preAuth.events!==401||preAuth.bundle!==401||preAuth.favicon!==200||preAuth.appLoaded||!initial.gate||initial.app!=='true'||!initial.mark||initial.input!=='password'||initial.button!=='Log in'||initial.body||!wrong?.includes('Incorrect password')||!cookie?.httpOnly||cookie?.sameSite!=='Strict'||health.status!==200||health.json?.ok!==true||sse?.type!=='bridge/status'||!['connecting','connected'].includes(sse.status)||bundle!==200)process.exit(1);

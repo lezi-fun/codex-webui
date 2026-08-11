@@ -16,6 +16,7 @@ const BROWSER_RPC_METHODS = new Set([
 const PUBLIC_ASSETS = new Set([
   "/index.html",
   "/style.css",
+  "/favicon.svg",
   "/auth-bootstrap.js",
   "/codex-brand.js",
   "/app.bundle.js",
