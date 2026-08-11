@@ -5,6 +5,7 @@ import {
   summarizeActivity,
   createReviewPreferences,
   splitDiffHunk,
+  unifiedDiffFromFileChanges,
 } from "../public/codex-surfaces.js";
 
 describe("Codex approval surfaces", () => {
@@ -82,6 +83,19 @@ describe("Codex review surfaces", () => {
     expect(review.files[0].path).toBe("src/a.ts");
     expect(review.files[0].hunks[0].lines[1].type).toBe("delete");
     expect(review.files[0].hunks[0].lines[2].type).toBe("add");
+  });
+
+  test("reconstructs a turn diff from app-server file change items", () => {
+    const diff = unifiedDiffFromFileChanges([
+      { path: "src/a.ts", kind: { type: "update", move_path: null }, diff: "@@ -1 +1 @@\n-old\n+new" },
+      { path: "src/new.ts", kind: { type: "add" }, diff: "@@ -0,0 +1 @@\n+created" },
+    ]);
+    const review = parseUnifiedDiff(diff);
+    expect(review.fileCount).toBe(2);
+    expect(review.linesAdded).toBe(2);
+    expect(review.linesDeleted).toBe(1);
+    expect(review.files.map(file => file.path)).toEqual(["src/a.ts", "src/new.ts"]);
+    expect(diff).toContain("--- /dev/null\n+++ b/src/new.ts");
   });
 });
 

@@ -24,6 +24,16 @@ describe("server-owned review state", () => {
     expect(store.begin("thread-1", "turn-1", "reapply").diff).toBe("diff one");
   });
 
+  test("keeps review operation state when the same live diff is recorded again", () => {
+    const store = new ReviewDiffStore();
+    store.record({ threadId: "thread-1", turnId: "turn-1", diff: "diff one" });
+    store.begin("thread-1", "turn-1", "undo");
+    store.finish("thread-1", "turn-1", "undo", true);
+    store.record({ threadId: "thread-1", turnId: "turn-1", diff: "diff one" });
+    expect(() => store.begin("thread-1", "turn-1", "undo")).toThrow(/not available/i);
+    expect(store.begin("thread-1", "turn-1", "reapply").diff).toBe("diff one");
+  });
+
   test("rejects client-supplied cwd and diff", () => {
     expect(() => parseReviewPatchRequest({ cwd: "/tmp", diff: "malicious", action: "reapply" })).toThrow(/client-supplied/i);
     expect(() => parseReviewPatchRequest({ threadId: "thread-1", turnId: "turn-1", action: "reapply" })).not.toThrow();

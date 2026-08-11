@@ -142,6 +142,9 @@ describe("Codex WebUI app-server bridge", () => {
     expect(models.data[0].model).toBeString();
     expect(threads.data.length).toBeGreaterThan(0);
     expect(threads.data[0].id).toBeString();
+    const live = await rpc("host/thread/live", { threadId: threads.data[0].id });
+    expect(live.active).toBeBoolean();
+    expect(live.turn === null || live.turn?.status === "inProgress").toBe(true);
   });
 
   test("blocks filesystem and configuration RPC methods from browser clients", async () => {

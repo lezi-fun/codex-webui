@@ -143,6 +143,31 @@ export function parseUnifiedDiff(diff = "") {
   return { hasChanges: files.length > 0 && (linesAdded + linesDeleted > 0), fileCount: files.length, linesAdded, linesDeleted, files };
 }
 
+function fileChangeKind(change = {}) {
+  return typeof change.kind === "string" ? change.kind : change.kind?.type || "update";
+}
+
+export function unifiedDiffFromFileChanges(changes = []) {
+  const sections = [];
+  for (const change of changes) {
+    const path = String(change?.path || change?.filePath || "");
+    const diff = String(change?.diff || change?.unified_diff || "").trimEnd();
+    if (!path || !diff || /[\r\n]/.test(path)) continue;
+    if (/^diff --git /m.test(diff)) {
+      sections.push(diff);
+      continue;
+    }
+    const kind = fileChangeKind(change);
+    const oldPath = kind === "add" ? "/dev/null" : `a/${path}`;
+    const newPath = kind === "delete" ? "/dev/null" : `b/${path}`;
+    const metadata = /^--- /m.test(diff) && /^\+\+\+ /m.test(diff)
+      ? diff
+      : `--- ${oldPath}\n+++ ${newPath}\n${diff}`;
+    sections.push(`diff --git a/${path} b/${path}\n${metadata}`);
+  }
+  return sections.join("\n");
+}
+
 function shellWords(command = "") {
   return String(command).match(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s]+/g)?.map((word) => word.replace(/^(['"])(.*)\1$/, "$2")) || [];
 }

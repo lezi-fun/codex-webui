@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join, resolve, extname } from "node:path";
+import { join, relative, resolve, extname } from "node:path";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { networkInterfaces, tmpdir } from "node:os";
@@ -7,10 +7,12 @@ import { WebSocketServer, WebSocket } from "ws";
 import { defaultBrowseRoots, isDirectory, listFolders, resolveBrowsePath } from "./folder-service.js";
 import { applyReviewPatch } from "./review-service.js";
 import { ReviewDiffStore, parseReviewPatchRequest } from "./review-state.js";
+import { unifiedDiffFromFileChanges } from "./public/codex-surfaces.js";
 import { createTerminalSession, normalizeTerminalResize, resolveTerminalCwd } from "./terminal-service.js";
 import { readWorkspaceContext } from "./workspace-context.js";
 import { searchWorkspaceFiles } from "./file-search.js";
 import { resolveLocalImage } from "./image-service.js";
+import { LiveSessionStore } from "./live-session-service.js";
 import {
   createPasswordSession,
   createStoredPassword,
@@ -54,6 +56,9 @@ const sseClients = new Set<ServerResponse>();
 const terminalSessions = new Map<WebSocket, ReturnType<typeof createTerminalSession>>();
 const pending = new Map<number, { resolve: (value: any) => void; reject: (error: Error) => void }>();
 const reviewDiffs = new ReviewDiffStore();
+const liveSessions = new LiveSessionStore();
+const threadPaths = new Map<string, string>();
+let codexSessionsRoot = resolve(homeDir, ".codex", "sessions");
 let seq = 1;
 let codex: ChildProcessWithoutNullStreams | null = null;
 let stdoutBuffer = "";
@@ -151,6 +156,7 @@ async function initialize() {
     capabilities: { experimentalApi: true },
   });
   sendRaw({ method: "initialized", params: {} });
+  if (typeof result?.codexHome === "string") codexSessionsRoot = resolve(result.codexHome, "sessions");
   connected = true;
   broadcast({ type: "bridge/status", status: "connected", info: result });
 }
@@ -172,8 +178,51 @@ function handleCodex(message: any) {
   if (message.method) {
     if (message.method === "account/updated") accountLoader.invalidate();
     if (message.method === "turn/diff/updated") reviewDiffs.record(message.params || {});
+    if (message.method === "item/fileChange/patchUpdated") recordFileChangeDiff(message.params || {});
+    if (message.method === "item/completed" && message.params?.item?.type === "fileChange") {
+      recordFileChangeDiff({ ...message.params, changes: message.params.item.changes });
+    }
     broadcast({ type: "codex/notification", payload: message });
   }
+}
+
+function recordFileChangeDiff({ threadId, turnId, changes }: any) {
+  const diff = unifiedDiffFromFileChanges(Array.isArray(changes) ? changes : []);
+  if (diff) reviewDiffs.record({ threadId, turnId, diff });
+}
+
+function recordReviewDiffsFromRpc(method: string, params: any, result: any) {
+  if (!["thread/read", "thread/resume", "thread/turns/list"].includes(method)) return;
+  const threadId = result?.thread?.id || params?.threadId;
+  const turns = result?.thread?.turns || result?.data || [];
+  if (typeof threadId !== "string" || !Array.isArray(turns)) return;
+  for (const turn of turns) {
+    const changes = (turn?.items || []).flatMap((item: any) => item?.type === "fileChange" && Array.isArray(item.changes) ? item.changes : []);
+    const diff = unifiedDiffFromFileChanges(changes);
+    if (typeof turn?.id === "string" && diff) reviewDiffs.record({ threadId, turnId: turn.id, diff });
+  }
+}
+
+function recordThreadPathsFromRpc(result: any) {
+  const threads = [result?.thread, ...(Array.isArray(result?.data) ? result.data : [])].filter(Boolean);
+  for (const thread of threads) {
+    if (typeof thread?.id === "string" && typeof thread?.path === "string") threadPaths.set(thread.id, thread.path);
+  }
+}
+
+async function readLiveThread(threadId: unknown) {
+  if (typeof threadId !== "string" || !threadId) throw new Error("Invalid thread id");
+  let path = threadPaths.get(threadId);
+  if (!path) {
+    const result = await request("thread/read", { threadId, includeTurns: false });
+    recordThreadPathsFromRpc(result);
+    path = threadPaths.get(threadId);
+  }
+  if (!path) return { active: false, turn: null, lastEventAt: null };
+  const child = relative(codexSessionsRoot, resolve(path));
+  const safePath = child && !child.startsWith("..") ? resolveSafeRegularFile(codexSessionsRoot, child) : null;
+  if (!safePath) throw new Error("Thread rollout is outside the Codex sessions directory");
+  return liveSessions.read(safePath);
 }
 
 function broadcast(data: any) {
@@ -186,7 +235,13 @@ async function dispatchBrowserMessage(message: any) {
   const id = message?.id;
   if (message?.type === "rpc") {
     if (!isAllowedBrowserRpcMethod(message.method)) throw new Error("RPC method is not available to browser clients");
-    return { type: "rpc/result", id, result: await request(message.method, message.params || {}) };
+    const params = message.params || {};
+    const result = message.method === "host/thread/live"
+      ? await readLiveThread(params.threadId)
+      : await request(message.method, params);
+    recordThreadPathsFromRpc(result);
+    recordReviewDiffsFromRpc(message.method, params, result);
+    return { type: "rpc/result", id, result };
   }
   if (message?.type === "codex/response") {
     if (!Number.isSafeInteger(message.requestId)) throw new Error("Invalid Codex request id");

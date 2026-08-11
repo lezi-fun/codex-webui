@@ -7,6 +7,12 @@ export class ReviewDiffStore {
   record({ threadId, turnId, diff }) {
     if (typeof threadId !== "string" || typeof turnId !== "string" || typeof diff !== "string" || !threadId || !turnId || !diff) return;
     const key = `${threadId}\0${turnId}`;
+    const existing = this.entries.get(key);
+    if (existing?.diff === diff) {
+      this.entries.delete(key);
+      this.entries.set(key, existing);
+      return;
+    }
     this.entries.delete(key);
     this.entries.set(key, { threadId, turnId, diff, state: "ready", busy: false });
     while (this.entries.size > this.maxEntries) this.entries.delete(this.entries.keys().next().value);
