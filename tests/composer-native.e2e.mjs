@@ -37,14 +37,15 @@ const contextUsage=await page.evaluate(()=>{
   const api=globalThis.__codexWebuiDebug,initiallyHidden=document.querySelector('#contextUsage').hidden;
   api.state.active={id:'context-thread',cwd:api.state.config.defaultCwd};
   api.notify('thread/tokenUsage/updated',{threadId:'context-thread',tokenUsage:{modelContextWindow:200000,last:{totalTokens:80000}}});
-  const indicator=document.querySelector('#contextUsage'),progress=indicator.querySelector('.context-usage-progress'),model=document.querySelector('#modelPicker');
+  const indicator=document.querySelector('#contextUsage'),progress=indicator.querySelector('.context-usage-progress'),dictation=document.querySelector('[data-composer-control="dictation"]');
   return {
     initiallyHidden,
     hidden:indicator.hidden,
     ariaLabel:indicator.getAttribute('aria-label'),
     tooltip:indicator.dataset.tooltip,
     dashOffset:getComputedStyle(progress).strokeDashoffset,
-    beforeModel:Boolean(indicator.compareDocumentPosition(model)&Node.DOCUMENT_POSITION_FOLLOWING),
+    inComposerRight:indicator.parentElement?.classList.contains('composer-right'),
+    beforeDictation:Boolean(indicator.compareDocumentPosition(dictation)&Node.DOCUMENT_POSITION_FOLLOWING),
   };
 });
 
@@ -103,7 +104,8 @@ if(errors.length
   ||contextUsage.ariaLabel!=='Context usage: 40%'
   ||contextUsage.tooltip!=='Context window:\n40% used (60% left)\n80k / 200k tokens used'
   ||Math.abs(parseFloat(contextUsage.dashOffset)-60)>.1
-  ||!contextUsage.beforeModel
+  ||!contextUsage.inComposerRight
+  ||!contextUsage.beforeDictation
   ||/^GPT-/i.test(home.triggerText||'')
   ||modelFilter.hasO3
   ||modelFilter.models.some(model=>!/^gpt(?:[-_.\s]|$)/i.test(model))
