@@ -19,16 +19,24 @@ const decodeAttribute = (value = "") => String(value)
   .replaceAll("&gt;", ">");
 
 export function agentMessageText(item = {}, fallback = "") {
-  if (typeof item.text === "string") return item.text;
-  if (typeof item.content === "string") return item.content;
-  if (!Array.isArray(item.content)) return fallback;
-  return item.content.map((part) => {
+  let text;
+  if (typeof item.text === "string") text = item.text;
+  else if (typeof item.content === "string") text = item.content;
+  else if (!Array.isArray(item.content)) text = fallback;
+  else text = item.content.map((part) => {
     if (typeof part === "string") return part;
     if (!part || typeof part !== "object") return "";
     return typeof part.text === "string" ? part.text
       : typeof part.content === "string" ? part.content
         : typeof part.value === "string" ? part.value : "";
   }).join("") || fallback;
+  return stripAgentInternalMarkup(text);
+}
+
+export function stripAgentInternalMarkup(value = "") {
+  const source = String(value || "");
+  const cleaned = source.replace(/\n*<oai-mem-citation>\s*[\s\S]*?<\/oai-mem-citation>\s*/gi, "");
+  return cleaned === source ? source : cleaned.trimEnd();
 }
 
 export function parseFileReference(href = "") {
@@ -113,26 +121,28 @@ function renderLinks(html, cwd) {
   return html.replace(/<a\s+[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi, (match, rawHref, label) => {
     const href = decodeAttribute(rawHref);
     const reference = parseFileReference(href);
-    if (reference) {
-      const suffix = citationSuffix(reference);
-      const image = isImageReference(reference.path);
-      if (image) {
-        const title = `View ${reference.path}${suffix}`;
-        return `<a class="file-citation image-citation" href="#file-reference" data-file-reference="${escapeHtml(reference.path)}" data-image-src="${escapeHtml(localImageUrl(reference.path, cwd))}" data-image-title="${escapeHtml(imageTitle(reference.path))}" data-image-path="${escapeHtml(reference.path)}"${reference.lineStart == null ? "" : ` data-file-line-start="${reference.lineStart}"`}${reference.lineEnd == null ? "" : ` data-file-line-end="${reference.lineEnd}"`} title="${escapeHtml(title)}">${label}</a>`;
-      }
-      if (reference.lineStart == null) {
-        const filename = imageTitle(reference.path);
-        return `<a class="file-citation file-download" href="${escapeHtml(localDownloadUrl(reference.path, cwd))}" data-file-download="${escapeHtml(reference.path)}" download="${escapeHtml(filename)}" title="${escapeHtml(`Download ${reference.path}`)}">${label}</a>`;
-      }
-      const title = `Open ${reference.path}${suffix}`;
-      return `<a class="file-citation" href="#file-reference" data-file-reference="${escapeHtml(reference.path)}" data-file-line-start="${reference.lineStart}"${reference.lineEnd == null ? "" : ` data-file-line-end="${reference.lineEnd}"`} title="${escapeHtml(title)}">${label}</a>`;
-    }
+    if (reference) return renderFileReference(reference, label, cwd);
     if (/^https?:\/\//i.test(href)) {
       const image = isImageReference(href);
       return `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer"${image ? ` class="image-citation" data-image-src="${escapeHtml(href)}" data-image-title="${escapeHtml(imageTitle(href))}"` : ""}>${label}</a>`;
     }
     return match;
   });
+}
+
+function renderFileReference(reference, label, cwd) {
+  const suffix = citationSuffix(reference);
+  const image = isImageReference(reference.path);
+  if (image) {
+    const title = `View ${reference.path}${suffix}`;
+    return `<a class="file-citation image-citation" href="#file-reference" data-file-reference="${escapeHtml(reference.path)}" data-image-src="${escapeHtml(localImageUrl(reference.path, cwd))}" data-image-title="${escapeHtml(imageTitle(reference.path))}" data-image-path="${escapeHtml(reference.path)}"${reference.lineStart == null ? "" : ` data-file-line-start="${reference.lineStart}"`}${reference.lineEnd == null ? "" : ` data-file-line-end="${reference.lineEnd}"`} title="${escapeHtml(title)}">${label}</a>`;
+  }
+  if (reference.lineStart == null) {
+    const filename = imageTitle(reference.path);
+    return `<a class="file-citation file-download" href="${escapeHtml(localDownloadUrl(reference.path, cwd))}" data-file-download="${escapeHtml(reference.path)}" download="${escapeHtml(filename)}" title="${escapeHtml(`Download ${reference.path}`)}">${label}</a>`;
+  }
+  const title = `Open ${reference.path}${suffix}`;
+  return `<a class="file-citation" href="#file-reference" data-file-reference="${escapeHtml(reference.path)}" data-file-line-start="${reference.lineStart}"${reference.lineEnd == null ? "" : ` data-file-line-end="${reference.lineEnd}"`} title="${escapeHtml(title)}">${label}</a>`;
 }
 
 function protectLocalProtocolLinks(html) {
@@ -150,6 +160,15 @@ function protectLocalProtocolLinks(html) {
       });
     },
   };
+}
+
+function protectCodexFileCitations(source, cwd, protectedBlocks) {
+  return source.replace(/:codex-file-citation\{([^}\r\n]*)\}/gi, (directive, attributes) => {
+    const path = attributeValue(` ${attributes}`, "path");
+    const reference = parseFileReference(path);
+    if (!reference) return directive;
+    return stash(protectedBlocks, renderFileReference(reference, escapeHtml(imageTitle(reference.path)), cwd));
+  });
 }
 
 function candidateSource(value) {
@@ -184,8 +203,7 @@ export function renderItemImages(item = {}, { cwd = "", className = "message-ima
   return `<div class="${escapeHtml(className)}">${images.map(image => renderImagePreview(image.source, { cwd, title: image.title })).join("")}</div>`;
 }
 
-function renderMath(source) {
-  const protectedBlocks = [];
+function renderMath(source, protectedBlocks = []) {
   let text = source.replace(/```([\w+-]*)\n([\s\S]*?)```/g, (_, lang, code) => stash(
     protectedBlocks,
     `<pre><code class="language-${escapeHtml(lang || "text")}">${escapeHtml(code.replace(/\n$/, ""))}</code></pre>`,
@@ -210,7 +228,9 @@ function sanitizeHtml(html) {
 }
 
 export function renderAssistantMarkdown(source = "", { cwd = "" } = {}) {
-  const { text, protectedBlocks } = renderMath(String(source));
+  const protectedBlocks = [];
+  const { text: protectedText } = renderMath(stripAgentInternalMarkup(source), protectedBlocks);
+  const text = protectCodexFileCitations(protectedText, cwd, protectedBlocks);
   marked.setOptions({ gfm: true, breaks: true });
   let html = marked.parse(text, { async: false });
   const localLinks = protectLocalProtocolLinks(html);

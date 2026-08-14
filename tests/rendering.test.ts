@@ -35,6 +35,20 @@ describe("assistant Markdown and LaTeX rendering", () => {
     expect(agentMessageText({ content: [{ type: "text", value: "Fallback" }] }, "Previous output")).toBe("Fallback");
   });
 
+  test("hides internal memory metadata and renders Codex output citations as downloads", () => {
+    const source = `Workbook ready.\n\n:codex-file-citation{path="/Users/home/Downloads/旅行 计划.xlsx" purpose="output" artifact_kind="workbook"}\n\n<oai-mem-citation>\n<citation_entries>\nMEMORY.md:158-189|note=[internal note]\n</citation_entries>\n<rollout_ids>\n019fc280-1ca5-7e50-934b-ad65b18d398c\n</rollout_ids>\n</oai-mem-citation>`;
+    const text = agentMessageText({ text: source });
+    const html = renderAssistantMarkdown(source, { cwd: "/Users/home" });
+    expect(text).toBe('Workbook ready.\n\n:codex-file-citation{path="/Users/home/Downloads/旅行 计划.xlsx" purpose="output" artifact_kind="workbook"}');
+    expect(html).toContain('class="file-citation file-download"');
+    expect(html).toContain('data-file-download="/Users/home/Downloads/旅行 计划.xlsx"');
+    expect(html).toContain('download="旅行 计划.xlsx"');
+    expect(html).not.toContain("codex-file-citation");
+    expect(html).not.toContain("MEMORY.md");
+    expect(html).not.toContain("oai-mem-citation");
+    expect(renderAssistantMarkdown('`:codex-file-citation{path="/tmp/literal.xlsx" purpose="output"}`')).toContain('codex-file-citation');
+  });
+
   test("renders file citations separately from external links", () => {
     const html = renderAssistantMarkdown("Changed [app.js](/Users/home/Projects/codex-webui/public/app.js:186-199) and [docs](https://example.com/docs).");
     expect(parseFileReference("/Users/home/Projects/codex-webui/public/app.js:186-199")).toEqual({ path: "/Users/home/Projects/codex-webui/public/app.js", lineStart: 186, lineEnd: 199 });

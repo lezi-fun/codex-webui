@@ -38,12 +38,12 @@ try{
     const api=globalThis.__codexWebuiDebug;
     api.state.active={id:'download-thread',cwd:'/tmp',source:'local'};
     document.querySelector('#conversation').replaceChildren();
-    api.notify('item/completed',{turnId:'download-turn',item:{id:'download-answer',type:'agentMessage',phase:'final_answer',text:`The result is ready. [Click to download](sandbox:${fixture.replaceAll(' ','%20')})`}});
+    api.notify('item/completed',{turnId:'download-turn',item:{id:'download-answer',type:'agentMessage',phase:'final_answer',text:`The result is ready. :codex-file-citation{path="${fixture}" purpose="output" artifact_kind="workbook"}`}});
   },{fixture});
   const link=page.locator('[data-local-conversation-final-assistant] a[data-file-download]');
   await link.waitFor();
   const attributes=await link.evaluate(node=>({href:node.getAttribute('href'),download:node.getAttribute('download'),path:node.dataset.fileDownload}));
-  if(!attributes.href?.startsWith('/api/files/download?')||attributes.download!=="agent's result.txt"||attributes.path!==fixture.replaceAll(' ','%20'))throw new Error(`Unexpected download link: ${JSON.stringify(attributes)}`);
+  if(!attributes.href?.startsWith('/api/files/download?')||attributes.download!=="agent's result.txt"||attributes.path!==fixture)throw new Error(`Unexpected download link: ${JSON.stringify(attributes)}`);
   const downloadPromise=page.waitForEvent('download');
   await link.click();
   const download=await downloadPromise;

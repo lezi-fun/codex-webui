@@ -2,7 +2,9 @@ import { chromium } from 'playwright';
 import { launchOptions } from './browser-runtime.mjs';
 
 const browser=await chromium.launch(launchOptions());
-const page=await browser.newPage({viewport:{width:1280,height:800}});
+const context=await browser.newContext({viewport:{width:1280,height:800}});
+await context.addInitScript(()=>{if(window===window.top)localStorage.setItem('codex-webui-locale','en')});
+const page=await context.newPage();
 const errors=[];
 page.on('pageerror',error=>errors.push(error.message));
 page.on('console',message=>{if(message.type()==='error'&&!message.text().includes('404'))errors.push(message.text())});
@@ -20,8 +22,9 @@ await page.evaluate(()=>{
   api.notify('item/completed',{turnId:'native-turn',item:{id:'native-commentary-2',type:'agentMessage',phase:'commentary',text:'The renderer is clear; now I’ll update and verify it.'}});
   api.notify('item/completed',{turnId:'native-turn',item:{id:'native-edit',type:'fileChange',status:'completed',changes:[{path:'/tmp/example.ts',additions:2,deletions:1}]}});
   api.notify('item/completed',{turnId:'native-turn',item:{id:'native-failed',type:'commandExecution',status:'failed',command:'bun test',aggregatedOutput:'one test failed',exitCode:1}});
-  api.notify('item/agentMessage/delta',{turnId:'native-turn',itemId:'native-agent',delta:'Implemented the native conversation timeline.'});
-  api.notify('item/completed',{turnId:'native-turn',item:{id:'native-agent',type:'agentMessage',phase:'final_answer',content:[{type:'output_text',text:'Implemented the native conversation timeline.\n\n- Contiguous tool activity is grouped.\n- The final response is plain Markdown.\n\nUpdated [app.js](/tmp/example.ts:12-14) and [guide](https://example.com/guide).'}]}});
+  api.notify('item/agentMessage/delta',{turnId:'native-turn',itemId:'item-6',delta:'Implemented the native conversation timeline.'});
+  api.notify('item/completed',{turnId:'native-turn',item:{id:'item-6',type:'agentMessage',phase:'final_answer',content:[{type:'output_text',text:'Implemented the native conversation timeline.\n\n- Contiguous tool activity is grouped.\n- The final response is plain Markdown.\n\nUpdated [app.js](/tmp/example.ts:12-14) and [guide](https://example.com/guide).'}]}});
+  api.notify('item/completed',{turnId:'native-turn',item:{id:'msg_rollout_duplicate',type:'agentMessage',phase:'final_answer',text:'Implemented the native conversation timeline.\n\n- Contiguous tool activity is grouped.\n- The final response is plain Markdown.\n\nUpdated [app.js](/tmp/example.ts:12-14) and [guide](https://example.com/guide).\n\n<oai-mem-citation>\n<citation_entries>\nMEMORY.md:1-2|note=[internal]\n</citation_entries>\n</oai-mem-citation>'}});
   api.notify('turn/completed',{turn:{id:'native-turn',durationMs:null,startedAt:100,completedAt:104,items:[
     {id:'native-user',type:'userMessage',content:[{type:'text',text:'Inspect the native conversation layout.'}]},
     {id:'native-commentary-1',type:'agentMessage',phase:'commentary',text:'I’ll inspect the source first.'},
@@ -29,8 +32,11 @@ await page.evaluate(()=>{
     {id:'native-commentary-2',type:'agentMessage',phase:'commentary',text:'The renderer is clear; now I’ll update and verify it.'},
     {id:'native-edit',type:'fileChange',status:'completed',changes:[{path:'/tmp/example.ts',additions:2,deletions:1}]},
     {id:'native-failed',type:'commandExecution',status:'failed',command:'bun test',aggregatedOutput:'one test failed',exitCode:1},
-    {id:'native-agent',type:'agentMessage',phase:'final_answer',content:[{type:'output_text',text:'Implemented the native conversation timeline.\n\n- Contiguous tool activity is grouped.\n- The final response is plain Markdown.\n\nUpdated [app.js](/tmp/example.ts:12-14) and [guide](https://example.com/guide).'}]},
+    {id:'item-6',type:'agentMessage',phase:'final_answer',content:[{type:'output_text',text:'Implemented the native conversation timeline.\n\n- Contiguous tool activity is grouped.\n- The final response is plain Markdown.\n\nUpdated [app.js](/tmp/example.ts:12-14) and [guide](https://example.com/guide).'}]},
   ]}});
+  const artifact='Artifact ready.\n\n:codex-file-citation{path="/tmp/旅行 计划.xlsx" purpose="output" artifact_kind="workbook"}';
+  api.notify('item/completed',{turnId:'protocol-turn',item:{id:'item-20',type:'agentMessage',phase:'final_answer',text:artifact}});
+  api.notify('item/completed',{turnId:'protocol-turn',item:{id:'msg_protocol_duplicate',type:'agentMessage',phase:'final_answer',text:`${artifact}\n\n<oai-mem-citation>\n<citation_entries>\nMEMORY.md:1-2|note=[internal]\n</citation_entries>\n</oai-mem-citation>`}});
 });
 await page.waitForSelector('[data-local-conversation-final-assistant]',{timeout:5000});
 
@@ -46,9 +52,10 @@ const markdownTypography=await page.evaluate(()=>{
 });
 
 const result=await page.evaluate(()=>{
-  const finals=[...document.querySelectorAll('[data-local-conversation-final-assistant]')];
+  const nativeTurn=document.querySelector('[data-turn-id="native-turn"]');
+  const finals=[...nativeTurn.querySelectorAll('[data-local-conversation-final-assistant]')];
   const final=finals[0];
-  const commentaries=[...document.querySelectorAll('[data-local-conversation-commentary]')];
+  const commentaries=[...nativeTurn.querySelectorAll('[data-local-conversation-commentary]')];
   const message=final?.querySelector('.message-text');
   const style=message&&getComputedStyle(message);
   const user=document.querySelector('.user-message');
@@ -91,6 +98,7 @@ const result=await page.evaluate(()=>{
     dividerBeforeFinal:!!divider&&!!final&&Boolean(divider.compareDocumentPosition(final)&Node.DOCUMENT_POSITION_FOLLOWING),
     citation:(()=>{const link=message?.querySelector('.file-citation');return link?{text:link.textContent,href:link.getAttribute('href'),path:link.dataset.fileReference,lineStart:link.dataset.fileLineStart,lineEnd:link.dataset.fileLineEnd,title:link.title}:null})(),
     externalLink:(()=>{const link=[...message?.querySelectorAll('a')||[]].find(link=>link.href==='https://example.com/guide');return link?{target:link.target,rel:link.rel}:null})(),
+    protocol:(()=>{const turn=document.querySelector('[data-turn-id="protocol-turn"]'),finals=[...turn.querySelectorAll('[data-local-conversation-final-assistant]')],link=turn.querySelector('[data-file-download]'),text=finals[0]?.textContent?.trim()||'';return{finalCount:finals.length,text,memoryVisible:/MEMORY\.md|oai-mem-citation|codex-file-citation/.test(text),link:link?{text:link.textContent,path:link.dataset.fileDownload,download:link.getAttribute('download'),href:link.getAttribute('href')}:null}})(),
   };
 });
 result.citationClick=await page.evaluate(()=>new Promise(resolve=>{
@@ -151,6 +159,7 @@ if(!result.groupExpansion?.itemsVisible||!result.groupExpansion?.outputHidden)th
 if(result.commandExpansion?.expanded!=='true'||result.commandExpansion.summary!=='Ran command'||result.commandExpansion.chevronGap>8||!result.commandExpansion.terminalIcon||result.commandExpansion.prompt!=='$'||result.commandExpansion.command!=='bun test'||result.commandExpansion.output!=='one test failed'||result.commandExpansion.footer!=='Exit code 1'||result.commandExpansion.borderRadius!=='8px'||result.commandExpansion.outputMaxHeight!=='144px')throw new Error(`Command shell must match the native expandable terminal surface: ${JSON.stringify(result.commandExpansion)}`);
 if(result.citation?.text!=='app.js'||result.citation.href!=='#file-reference'||result.citation.path!=='/tmp/example.ts'||result.citation.lineStart!=='12'||result.citation.lineEnd!=='14'||result.citation.title!=='Open /tmp/example.ts:12-14')throw new Error(`Unexpected file citation: ${JSON.stringify(result.citation)}`);
 if(result.externalLink?.target!=='_blank'||!result.externalLink.rel.includes('noopener')||!result.externalLink.rel.includes('noreferrer'))throw new Error(`External links must retain safe target metadata: ${JSON.stringify(result.externalLink)}`);
+if(result.protocol.finalCount!==1||result.protocol.text.replace(/\s+/g,' ')!=='Artifact ready. 旅行 计划.xlsx'||result.protocol.memoryVisible||result.protocol.link?.text!=='旅行 计划.xlsx'||result.protocol.link?.path!=='/tmp/旅行 计划.xlsx'||result.protocol.link?.download!=='旅行 计划.xlsx'||!result.protocol.link?.href.startsWith('/api/files/download?'))throw new Error(`Codex artifact citations and rollout aliases must render once without internal metadata: ${JSON.stringify(result.protocol)}`);
 if(result.citationClick?.hash!==''||JSON.stringify(result.citationClick.detail)!==JSON.stringify({path:'/tmp/example.ts',lineStart:12,lineEnd:14}))throw new Error(`File citation must preserve the conversation route and dispatch its reference: ${JSON.stringify(result.citationClick)}`);
 if(result.workedForText!=='Worked for 4s'||!result.dividerBeforeFinal)throw new Error(`Unexpected worked-for divider: ${result.workedForText}`);
 if(result.workedForFlexDirection!=='column'||result.workedForLineCount!==1||JSON.stringify(result.workedForChildren)!==JSON.stringify(['span','div']))throw new Error(`Worked-for unit must render label then one rule; got ${result.workedForFlexDirection}/${result.workedForLineCount}/${JSON.stringify(result.workedForChildren)}`);
