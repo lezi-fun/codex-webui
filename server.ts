@@ -8,6 +8,7 @@ import { defaultBrowseRoots, isDirectory, listFolders, resolveBrowsePath } from 
 import { applyReviewPatch } from "./review-service.js";
 import { ReviewDiffStore, parseReviewPatchRequest } from "./review-state.js";
 import { unifiedDiffFromFileChanges } from "./public/codex-surfaces.js";
+import { rpcErrorPayload } from "./public/bridge-errors.js";
 import { createTerminalSession, normalizeTerminalResize, resolveTerminalCwd } from "./terminal-service.js";
 import { readWorkspaceContext } from "./workspace-context.js";
 import { searchWorkspaceFiles } from "./file-search.js";
@@ -236,14 +237,18 @@ function broadcast(data: any) {
 async function dispatchBrowserMessage(message: any) {
   const id = message?.id;
   if (message?.type === "rpc") {
-    if (!isAllowedBrowserRpcMethod(message.method)) throw new Error("RPC method is not available to browser clients");
-    const params = message.params || {};
-    const result = message.method === "host/thread/live"
-      ? await readLiveThread(params.threadId)
-      : await request(message.method, params);
-    recordThreadPathsFromRpc(result);
-    recordReviewDiffsFromRpc(message.method, params, result);
-    return { type: "rpc/result", id, result };
+    try {
+      if (!isAllowedBrowserRpcMethod(message.method)) throw new Error("RPC method is not available to browser clients");
+      const params = message.params || {};
+      const result = message.method === "host/thread/live"
+        ? await readLiveThread(params.threadId)
+        : await request(message.method, params);
+      recordThreadPathsFromRpc(result);
+      recordReviewDiffsFromRpc(message.method, params, result);
+      return { type: "rpc/result", id, result };
+    } catch (error) {
+      return rpcErrorPayload(id, error);
+    }
   }
   if (message?.type === "codex/response") {
     if (!Number.isSafeInteger(message.requestId)) throw new Error("Invalid Codex request id");
@@ -261,7 +266,7 @@ async function dispatchBrowserMessage(message: any) {
 
 async function handleClient(client: WebSocket, message: any) {
   try { client.send(JSON.stringify(await dispatchBrowserMessage(message))); }
-  catch (error) { client.send(JSON.stringify({ type: "rpc/error", id: message?.id, error: error instanceof Error ? error.message : String(error) })); }
+  catch (error) { client.send(JSON.stringify(rpcErrorPayload(message?.id, error))); }
 }
 
 function readJsonBody(req: IncomingMessage, maxBytes = 256_000) {

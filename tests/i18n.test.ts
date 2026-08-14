@@ -34,6 +34,7 @@ describe("WebUI i18n", () => {
     expect(translate("Unrestricted access to the internet and any file on your computer", "zh-CN")).toBe("不受限制地访问互联网和此电脑上的任意文件");
     expect(translate("Choose project folder", "zh-CN")).toBe("选择项目文件夹");
     expect(translate("No side tasks", "zh-CN")).toBe("没有子任务");
+    expect(translate("This task is currently running in another Codex app or CLI. Close it there, then try again.", "zh-CN")).toContain("另一个 Codex 应用或 CLI");
   });
 
   test("translates dynamic interface text without changing conversation content", async () => {

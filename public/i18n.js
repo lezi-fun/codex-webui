@@ -98,6 +98,8 @@ Object.assign(ZH_CN, {
   "Reapply changes": "重新应用更改",
   "Changes reverted": "更改已撤销",
   "Changes reapplied": "更改已重新应用",
+  "This task is currently running in another Codex app or CLI. Close it there, then try again.": "此任务正在另一个 Codex 应用或 CLI 中运行。请先在那里关闭或结束任务，然后重试。",
+  "This task could not be found. Refresh the task list and try again.": "找不到此任务。请刷新任务列表后重试。",
 });
 
 Object.assign(ZH_CN, {
