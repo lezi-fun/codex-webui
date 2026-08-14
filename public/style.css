@@ -506,6 +506,7 @@ body.sidebar-hidden .sidebar{box-shadow:none!important}
 .send-button{width:32px;height:32px;flex:0 0 32px;border-radius:50%;margin-left:1px;background:var(--app-text);color:var(--app-main)}
 .send-button:hover{filter:brightness(.9)}
 .send-button .icon-slot,.send-button .icon-slot>svg{width:16px;height:16px}
+.send-button[data-submit-mode=stop] .icon-slot>svg{width:18px;height:18px}
 @media(max-width:720px){
   .composer textarea{min-height:62px}
   .composer-footer{overflow:hidden}

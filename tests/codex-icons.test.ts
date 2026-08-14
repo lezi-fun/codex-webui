@@ -27,6 +27,13 @@ describe("Codex icon assets", () => {
     expect(html).toContain("M12 19V5");
   });
 
+  test("renders the filled stop square used by the active composer", () => {
+    const html = codexIcon("square", "stop-icon");
+    expect(html).toContain('class="icon-slot stop-icon"');
+    expect(html).toContain('fill="currentColor"');
+    expect(html).toContain('stroke="none"');
+  });
+
   test("hydrates static placeholders", () => {
     const nodes = [{ dataset: { icon: "plus" }, innerHTML: "" }];
     hydrateCodexIcons({ querySelectorAll: () => nodes });

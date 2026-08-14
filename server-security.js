@@ -13,6 +13,7 @@ const BROWSER_RPC_METHODS = new Set([
   "host/thread/live",
   "thread/start",
   "turn/start",
+  "turn/steer",
   "turn/interrupt",
 ]);
 

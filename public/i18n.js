@@ -53,6 +53,8 @@ Object.assign(ZH_CN, {
   "Attach files and folders": "附加文件和文件夹",
   "Start dictation": "开始听写",
   "Send message": "发送消息",
+  "Steer": "插入消息",
+  "Stop": "停止",
   "Change permissions": "更改权限",
   "Ask for approval": "请求审批",
   "How should Codex actions be approved?": "Codex 的操作应如何审批？",
