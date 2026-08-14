@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { createReadStream, existsSync, readFileSync } from "node:fs";
 import { join, relative, resolve, extname } from "node:path";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
@@ -11,6 +11,7 @@ import { unifiedDiffFromFileChanges } from "./public/codex-surfaces.js";
 import { createTerminalSession, normalizeTerminalResize, resolveTerminalCwd } from "./terminal-service.js";
 import { readWorkspaceContext } from "./workspace-context.js";
 import { searchWorkspaceFiles } from "./file-search.js";
+import { resolveLocalFile } from "./file-service.js";
 import { resolveLocalImage } from "./image-service.js";
 import { LiveSessionStore } from "./live-session-service.js";
 import {
@@ -50,6 +51,7 @@ const homeDir = process.env.HOME || process.cwd();
 const defaultCwd = resolve(process.env.CODEX_WEBUI_CWD || appRoot);
 const browseRoots = defaultBrowseRoots(homeDir);
 const imageRoots = [...new Set([...browseRoots, resolve(tmpdir()), resolve("/tmp")])];
+const fileRoots = [...new Set([...browseRoots, defaultCwd, resolve(tmpdir()), resolve("/tmp")])];
 const reviewRoots = [resolve(process.env.CODEX_WEBUI_REVIEW_ROOT || defaultCwd)];
 const clients = new Set<WebSocket>();
 const sseClients = new Set<ServerResponse>();
@@ -335,6 +337,10 @@ function issueBrowserSession(req: IncomingMessage, res: ServerResponse) {
   res.end(JSON.stringify({ ok: true }));
 }
 
+function encodeContentDispositionFilename(filename: string) {
+  return encodeURIComponent(filename).replace(/[!'()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`);
+}
+
 const mime: Record<string, string> = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
   ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon",
@@ -509,6 +515,36 @@ const server = createServer(async (req, res) => {
     } catch (error) {
       res.writeHead(400, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
       res.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }));
+    }
+    return;
+  }
+  if (url.pathname === "/api/files/download") {
+    if (req.method !== "GET") {
+      res.writeHead(405, { "content-type": "application/json; charset=utf-8", allow: "GET", "cache-control": "no-store" });
+      res.end(JSON.stringify({ error: "Method not allowed" }));
+      return;
+    }
+    try {
+      const file = resolveLocalFile(url.searchParams.get("path"), {
+        cwd: url.searchParams.get("cwd") || defaultCwd,
+        home: homeDir,
+        allowedRoots: fileRoots,
+      });
+      res.writeHead(200, {
+        "content-type": "application/octet-stream",
+        "content-length": String(file.size),
+        "content-disposition": `attachment; filename="download"; filename*=UTF-8''${encodeContentDispositionFilename(file.filename)}`,
+        "cache-control": "no-store",
+        "cross-origin-resource-policy": "same-origin",
+        "x-content-type-options": "nosniff",
+      });
+      const stream = createReadStream(file.path);
+      stream.on("error", () => res.destroy());
+      req.on("aborted", () => stream.destroy());
+      stream.pipe(res);
+    } catch {
+      res.writeHead(404, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });
+      res.end(JSON.stringify({ error: "File unavailable" }));
     }
     return;
   }

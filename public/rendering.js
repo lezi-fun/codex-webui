@@ -34,7 +34,7 @@ export function agentMessageText(item = {}, fallback = "") {
 export function parseFileReference(href = "") {
   const value = decodeAttribute(href);
   if (!value || /^(?:https?:|mailto:|#)/i.test(value)) return null;
-  const path = value.replace(/^file:\/\//i, "");
+  const path = value.replace(/^file:\/\//i, "").replace(/^sandbox:/i, "");
   const match = path.match(/^((?:\/|~\/|\.{1,2}\/|[A-Za-z]:[\\/])[^?#]*?)(?::(\d+)(?:-(\d+))?)?$/);
   if (!match) return null;
   return {
@@ -63,6 +63,12 @@ export function localImageUrl(path, cwd = "") {
   const query = new URLSearchParams({ path: String(path || "") });
   if (cwd) query.set("cwd", String(cwd));
   return `/api/images/local?${query}`;
+}
+
+export function localDownloadUrl(path, cwd = "") {
+  const query = new URLSearchParams({ path: String(path || "") });
+  if (cwd) query.set("cwd", String(cwd));
+  return `/api/files/download?${query}`;
 }
 
 function imageSource(source, cwd = "", explicit = false) {
@@ -110,8 +116,16 @@ function renderLinks(html, cwd) {
     if (reference) {
       const suffix = citationSuffix(reference);
       const image = isImageReference(reference.path);
-      const title = `${image ? "View" : "Open"} ${reference.path}${suffix}`;
-      return `<a class="file-citation${image ? " image-citation" : ""}" href="#file-reference" data-file-reference="${escapeHtml(reference.path)}"${image ? ` data-image-src="${escapeHtml(localImageUrl(reference.path, cwd))}" data-image-title="${escapeHtml(imageTitle(reference.path))}" data-image-path="${escapeHtml(reference.path)}"` : ""}${reference.lineStart == null ? "" : ` data-file-line-start="${reference.lineStart}"`}${reference.lineEnd == null ? "" : ` data-file-line-end="${reference.lineEnd}"`} title="${escapeHtml(title)}">${label}</a>`;
+      if (image) {
+        const title = `View ${reference.path}${suffix}`;
+        return `<a class="file-citation image-citation" href="#file-reference" data-file-reference="${escapeHtml(reference.path)}" data-image-src="${escapeHtml(localImageUrl(reference.path, cwd))}" data-image-title="${escapeHtml(imageTitle(reference.path))}" data-image-path="${escapeHtml(reference.path)}"${reference.lineStart == null ? "" : ` data-file-line-start="${reference.lineStart}"`}${reference.lineEnd == null ? "" : ` data-file-line-end="${reference.lineEnd}"`} title="${escapeHtml(title)}">${label}</a>`;
+      }
+      if (reference.lineStart == null) {
+        const filename = imageTitle(reference.path);
+        return `<a class="file-citation file-download" href="${escapeHtml(localDownloadUrl(reference.path, cwd))}" data-file-download="${escapeHtml(reference.path)}" download="${escapeHtml(filename)}" title="${escapeHtml(`Download ${reference.path}`)}">${label}</a>`;
+      }
+      const title = `Open ${reference.path}${suffix}`;
+      return `<a class="file-citation" href="#file-reference" data-file-reference="${escapeHtml(reference.path)}" data-file-line-start="${reference.lineStart}"${reference.lineEnd == null ? "" : ` data-file-line-end="${reference.lineEnd}"`} title="${escapeHtml(title)}">${label}</a>`;
     }
     if (/^https?:\/\//i.test(href)) {
       const image = isImageReference(href);
@@ -119,6 +133,23 @@ function renderLinks(html, cwd) {
     }
     return match;
   });
+}
+
+function protectLocalProtocolLinks(html) {
+  const references = [];
+  const protectedHtml = html.replace(/\bhref=("|')((?:file|sandbox):[^"']+)\1/gi, (_, quote, href) => {
+    const index = references.push(href) - 1;
+    return `href=${quote}#codex-local-reference-${index}${quote}`;
+  });
+  return {
+    html: protectedHtml,
+    restore(value) {
+      return value.replace(/href=("|')#codex-local-reference-(\d+)\1/gi, (match, quote, index) => {
+        const href = references[Number(index)];
+        return href == null ? match : `href=${quote}${escapeHtml(href)}${quote}`;
+      });
+    },
+  };
 }
 
 function candidateSource(value) {
@@ -182,7 +213,8 @@ export function renderAssistantMarkdown(source = "", { cwd = "" } = {}) {
   const { text, protectedBlocks } = renderMath(String(source));
   marked.setOptions({ gfm: true, breaks: true });
   let html = marked.parse(text, { async: false });
-  html = sanitizeHtml(html).replace(/javascript\s*:/gi, "");
+  const localLinks = protectLocalProtocolLinks(html);
+  html = localLinks.restore(sanitizeHtml(localLinks.html)).replace(/javascript\s*:/gi, "");
   html = html.replace(/\u0000CODEX(\d+)\u0000/g, (_, index) => protectedBlocks[Number(index)] || "");
   return renderLinks(renderImages(html, cwd), cwd);
 }

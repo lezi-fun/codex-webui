@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { agentMessageText, isImageReference, itemImageReferences, localImageUrl, parseFileReference, renderAssistantMarkdown, renderItemImages } from "../public/rendering.js";
+import { agentMessageText, isImageReference, itemImageReferences, localDownloadUrl, localImageUrl, parseFileReference, renderAssistantMarkdown, renderItemImages } from "../public/rendering.js";
 
 describe("assistant Markdown and LaTeX rendering", () => {
   test("renders headings, lists and fenced code blocks", () => {
@@ -46,6 +46,17 @@ describe("assistant Markdown and LaTeX rendering", () => {
     expect(html).toContain('href="https://example.com/docs" target="_blank" rel="noopener noreferrer"');
   });
 
+  test("downloads local files without line numbers and preserves sandbox links", () => {
+    const html = renderAssistantMarkdown("[report](sandbox:/tmp/generated%20report.pdf) [source](/tmp/source.ts:12)", { cwd: "/tmp/project" });
+    expect(parseFileReference("sandbox:/tmp/generated%20report.pdf")).toEqual({ path: "/tmp/generated%20report.pdf", lineStart: null, lineEnd: null });
+    expect(localDownloadUrl("/tmp/generated%20report.pdf", "/tmp/project")).toBe("/api/files/download?path=%2Ftmp%2Fgenerated%2520report.pdf&cwd=%2Ftmp%2Fproject");
+    expect(html).toContain('class="file-citation file-download"');
+    expect(html).toContain('data-file-download="/tmp/generated%20report.pdf"');
+    expect(html).toContain('href="/api/files/download?path=%2Ftmp%2Fgenerated%2520report.pdf&amp;cwd=%2Ftmp%2Fproject"');
+    expect(html).toContain('download="generated report.pdf"');
+    expect(html).toContain('class="file-citation" href="#file-reference" data-file-reference="/tmp/source.ts" data-file-line-start="12"');
+  });
+
   test("routes local Markdown images through the authenticated image endpoint", () => {
     const html = renderAssistantMarkdown("![Screenshot](/tmp/codex-preview.png)", { cwd: "/tmp/project" });
     expect(isImageReference("/tmp/codex-preview.png")).toBe(true);
@@ -56,12 +67,12 @@ describe("assistant Markdown and LaTeX rendering", () => {
     expect(html).not.toContain('src="/tmp/codex-preview.png"');
   });
 
-  test("makes local and remote image citations viewable without changing normal file references", () => {
+  test("makes local and remote image citations viewable while normal local files are downloadable", () => {
     const html = renderAssistantMarkdown("[local](/tmp/result.webp) [remote](https://example.com/result.jpg) [code](/tmp/result.ts)", { cwd: "/tmp" });
     expect(html).toContain('class="file-citation image-citation"');
     expect(html).toContain('data-image-src="/api/images/local?path=%2Ftmp%2Fresult.webp&amp;cwd=%2Ftmp"');
     expect(html).toContain('href="https://example.com/result.jpg" target="_blank" rel="noopener noreferrer" class="image-citation"');
-    expect(html).toContain('class="file-citation" href="#file-reference" data-file-reference="/tmp/result.ts"');
+    expect(html).toContain('class="file-citation file-download" href="/api/files/download?path=%2Ftmp%2Fresult.ts&amp;cwd=%2Ftmp"');
   });
 
   test("extracts structured agent and generated-image references", () => {
