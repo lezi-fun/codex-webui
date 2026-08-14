@@ -106,6 +106,11 @@ const profile=await page.evaluate(()=>({
 await page.click('#modeButton');
 await page.click('[data-permission-mode="full-access"]');
 await page.waitForFunction(()=>document.querySelector('#fullAccessDialog').open);
+const fullAccessDialog=await page.evaluate(()=>{
+  const dialog=document.querySelector('#fullAccessDialog'),rect=dialog.getBoundingClientRect();
+  return {modal:dialog.matches(':modal'),centerX:rect.left+rect.width/2,centerY:rect.top+rect.height/2,viewportX:innerWidth/2,viewportY:innerHeight/2};
+});
+await page.screenshot({path:'/tmp/codex-webui-full-access-dialog.png'});
 await page.click('#confirmFullAccess');
 const fullAccess=await page.evaluate(()=>({
   label:document.querySelector('#modeButton .control-label').textContent.trim(),
@@ -183,7 +188,7 @@ await directPage.waitForFunction(()=>!document.querySelector('#settingsDialog').
 directSettings.closedRoute=await directPage.evaluate(()=>location.pathname);
 await directPage.close();
 
-console.log(JSON.stringify({chatgpt,settingsShell,configuration,settingsSearch,settings,permissionMenu,guardian,profile,fullAccess,fullAccessSettingOff,fullAccessSettingOn,apiKey,apiSettings,mobileSettings,mobileSettingsNavigation,directSettings,errors},null,2));
+console.log(JSON.stringify({chatgpt,settingsShell,configuration,settingsSearch,settings,permissionMenu,guardian,profile,fullAccessDialog,fullAccess,fullAccessSettingOff,fullAccessSettingOn,apiKey,apiSettings,mobileSettings,mobileSettingsNavigation,directSettings,errors},null,2));
 await browser.close();
 if(
   errors.length||
@@ -193,6 +198,7 @@ if(
   !permissionMenu.open||permissionMenu.options.join('|')!=='Ask for approval|Approve for me|Full access|team-safe|managed-blocked'||!permissionMenu.blockedDisabled||
   guardian.selected.approvalsReviewer!=='auto_review'||guardian.thread.approvalPolicy!=='on-request'||guardian.thread.approvalsReviewer!=='auto_review'||guardian.thread.sandbox!=='workspace-write'||guardian.turn.approvalsReviewer!=='auto_review'||guardian.turn.sandboxPolicy.type!=='workspaceWrite'||guardian.turn.permissions!==null||
   profile.selected.profileId!=='team-safe'||profile.thread.permissions!=='team-safe'||Object.keys(profile.thread).length!==1||profile.turn.permissions!=='team-safe'||profile.turn.approvalPolicy!==null||profile.turn.approvalsReviewer!==null||'sandboxPolicy' in profile.turn||
+  !fullAccessDialog.modal||Math.abs(fullAccessDialog.centerX-fullAccessDialog.viewportX)>1||Math.abs(fullAccessDialog.centerY-fullAccessDialog.viewportY)>1||
   fullAccess.label!=='Full access'||fullAccess.mode!=='full-access'||fullAccess.selected.approvalPolicy!=='never'||fullAccess.selected.sandbox!=='danger-full-access'||fullAccess.thread.approvalPolicy!=='never'||fullAccess.thread.approvalsReviewer!=='user'||fullAccess.thread.sandbox!=='danger-full-access'||fullAccess.turn.sandboxPolicy.type!=='dangerFullAccess'||
   fullAccessSettingOff.checked||fullAccessSettingOff.visible||fullAccessSettingOff.mode!=='default'||!fullAccessSettingOn.checked||!fullAccessSettingOn.visible||fullAccessSettingOn.mode!=='default'||
   apiKey.footerName!=='API key'||apiKey.footerMeta!==''||apiKey.buttonLabel!=='Open settings'||apiKey.avatarClass!=='account-avatar account-settings-icon'||apiKey.avatarIcon!==1||!apiKey.profileHidden||!apiKey.usageHidden||apiKey.settingsHidden||!apiKey.logoutHidden||!apiSettings.autoReviewHidden||mobileSettings.horizontalOverflow||mobileSettings.dialog.width!==mobileSettings.viewport.width||mobileSettings.pageVisible!=='true'||mobileSettings.navWidth!==0||mobileSettings.contentWidth!==mobileSettings.viewport.width||mobileSettingsNavigation.pageVisible!=='false'||mobileSettingsNavigation.navWidth!==mobileSettings.viewport.width||mobileSettingsNavigation.contentWidth!==0||directSettings.route!=='/settings/browser-use'||directSettings.title!=='Browser'||directSettings.modal||directSettings.closedRoute!=='/'
