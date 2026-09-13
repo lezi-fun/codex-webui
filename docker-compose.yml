@@ -1,0 +1,29 @@
+services:
+  codex-webui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: codex-webui-lezi-fun:local
+    container_name: codex-webui-lezi-fun
+    restart: unless-stopped
+    user: "${PUID:-1000}:${PGID:-1000}"
+    working_dir: /app
+    command: ["bun", "run", "start"]
+    ports:
+      - "${WEBUI_BIND_IP:-127.0.0.1}:8899:8899"
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "8899"
+      HOME: "${CONTAINER_HOME:-/home/codex}"
+      CODEX_HOME: "${CONTAINER_CODEX_HOME:-/home/codex/.codex}"
+      CODEX_WEBUI_PROJECTLESS: "${CODEX_WEBUI_PROJECTLESS:-true}"
+      TZ: "${TZ:-Europe/Rome}"
+    volumes:
+      - .:/app
+      - codex_webui_node_modules:/app/node_modules
+      - ${CODEX_HOME_HOST:-${HOME}/.codex}:${CONTAINER_CODEX_HOME:-/home/codex/.codex}
+      - ${CODEX_BIN:-${HOME}/.codex/packages/standalone/releases/0.154.0-aarch64-unknown-linux-musl/bin/codex}:/usr/local/bin/codex:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  codex_webui_node_modules:

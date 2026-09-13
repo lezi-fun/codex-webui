@@ -652,6 +652,10 @@ body.sidebar-hidden .sidebar>div{opacity:0}
 .thread-item{height:30px;padding:0 8px 0 32px;border-radius:10px;color:var(--app-text-secondary)}
 .thread-item:hover{background:var(--app-hover);color:var(--app-text)}
 .thread-item.active{background:var(--app-selection);color:var(--app-text)}
+.thread-delete{display:flex;align-items:center;justify-content:center;width:22px;height:22px;flex:0 0 22px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--app-text-secondary);opacity:0;cursor:pointer}
+.thread-item:hover .thread-delete,.thread-item:focus-within .thread-delete{opacity:1}
+.thread-delete:hover,.thread-delete:focus-visible{background:var(--app-hover);color:var(--danger)}
+.thread-delete .icon-slot,.thread-delete svg{width:14px;height:14px}
 .thread-name{font-size:14px;line-height:20px}
 .thread-meta{display:none}
 .sidebar-footer{padding:0 8px;border-top:.5px solid color-mix(in srgb,var(--app-border) 70%,transparent)}

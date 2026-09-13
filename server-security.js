@@ -8,6 +8,7 @@ const BROWSER_RPC_METHODS = new Set([
   "account/logout",
   "thread/list",
   "thread/read",
+  "thread/delete",
   "thread/resume",
   "thread/turns/list",
   "host/thread/live",
