@@ -17,6 +17,7 @@ services:
       HOME: "${CONTAINER_HOME:-/home/codex}"
       CODEX_HOME: "${CONTAINER_CODEX_HOME:-/home/codex/.codex}"
       CODEX_WEBUI_PROJECTLESS: "${CODEX_WEBUI_PROJECTLESS:-true}"
+      CODEX_WEBUI_REVIEW_ROOT: "${CODEX_WEBUI_REVIEW_ROOT:?Set CODEX_WEBUI_REVIEW_ROOT to the Git root allowed for reviews}"
       TZ: "${TZ:-Europe/Rome}"
     volumes:
       - .:/app

@@ -234,7 +234,7 @@ async function deleteThread(thread){
     await refreshThreadList();
     if(wasActive)startNewTask();else renderThreads();
     toast(t('Thread deleted'));
-  }catch(error){toast(error?.message||t('Could not delete thread'))}
+  }catch(error){console.error('Could not delete thread',error);toast(t('Could not delete thread'))}
 }
 function renderThreads(){
   const list=$('#threadList'),q=$('#threadSearch').value.trim().toLowerCase(),groups=new Map;list.innerHTML='';

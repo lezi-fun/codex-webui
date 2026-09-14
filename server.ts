@@ -50,11 +50,15 @@ const appRoot = existsSync(resolve(import.meta.dir, "public")) ? import.meta.dir
 const publicDir = resolve(appRoot, "public");
 const homeDir = process.env.HOME || process.cwd();
 const projectless = process.env.CODEX_WEBUI_PROJECTLESS === "true";
+const configuredReviewRoot = process.env.CODEX_WEBUI_REVIEW_ROOT || null;
+if (projectless && !configuredReviewRoot) {
+  throw new Error("CODEX_WEBUI_REVIEW_ROOT is required when CODEX_WEBUI_PROJECTLESS=true");
+}
 const defaultCwd = resolve(process.env.CODEX_WEBUI_CWD || (projectless ? homeDir : appRoot));
 const browseRoots = defaultBrowseRoots(homeDir);
 const imageRoots = [...new Set([...browseRoots, resolve(tmpdir()), resolve("/tmp")])];
 const fileRoots = [...new Set([...browseRoots, defaultCwd, resolve(tmpdir()), resolve("/tmp")])];
-const reviewRoots = [resolve(process.env.CODEX_WEBUI_REVIEW_ROOT || defaultCwd)];
+const reviewRoots = [resolve(configuredReviewRoot || defaultCwd)];
 const clients = new Set<WebSocket>();
 const sseClients = new Set<ServerResponse>();
 const terminalSessions = new Map<WebSocket, ReturnType<typeof createTerminalSession>>();

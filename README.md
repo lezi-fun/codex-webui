@@ -208,6 +208,7 @@ The repository includes a Compose setup for a local container deployment. Set `C
 
 ```bash
 export CODEX_BIN="$HOME/.codex/packages/standalone/releases/VERSION/bin/codex"
+export CODEX_WEBUI_REVIEW_ROOT="$HOME/projects/my-project"
 docker compose up -d --build
 ```
 
