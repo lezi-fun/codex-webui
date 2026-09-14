@@ -22,8 +22,7 @@ services:
       - .:/app
       - codex_webui_node_modules:/app/node_modules
       - ${CODEX_HOME_HOST:-${HOME}/.codex}:${CONTAINER_CODEX_HOME:-/home/codex/.codex}
-      - ${CODEX_BIN:-${HOME}/.codex/packages/standalone/releases/0.154.0-aarch64-unknown-linux-musl/bin/codex}:/usr/local/bin/codex:ro
-      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CODEX_BIN:?Set CODEX_BIN to the Codex executable path}:/usr/local/bin/codex:ro
 
 volumes:
   codex_webui_node_modules:

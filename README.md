@@ -202,6 +202,17 @@ bun run build
 bun dist/server.js
 ```
 
+## Docker
+
+The repository includes a Compose setup for a local container deployment. Set `CODEX_BIN` to an executable Codex CLI path before starting it; the path is mounted read-only into the container. The app starts in projectless mode by default and stores Codex state through the configured volume.
+
+```bash
+export CODEX_BIN="$HOME/.codex/packages/standalone/releases/VERSION/bin/codex"
+docker compose up -d --build
+```
+
+The Compose example does not mount the host Docker socket. The image runs as the configured `PUID`/`PGID` user and receives runtime configuration through environment variables.
+
 ## Testing
 
 Install Playwright's Chromium if you do not already have a compatible Chrome/Edge binary:

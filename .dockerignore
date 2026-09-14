@@ -4,3 +4,6 @@ node_modules
 dist
 public/app.bundle.js
 *.log
+.env
+.env.*
+!.env.example

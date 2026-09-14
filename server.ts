@@ -49,7 +49,8 @@ const localhostOnly = host === "127.0.0.1" || host === "::1" || host === "localh
 const appRoot = existsSync(resolve(import.meta.dir, "public")) ? import.meta.dir : resolve(import.meta.dir, "..");
 const publicDir = resolve(appRoot, "public");
 const homeDir = process.env.HOME || process.cwd();
-const defaultCwd = resolve(process.env.CODEX_WEBUI_CWD || appRoot);
+const projectless = process.env.CODEX_WEBUI_PROJECTLESS === "true";
+const defaultCwd = resolve(process.env.CODEX_WEBUI_CWD || (projectless ? homeDir : appRoot));
 const browseRoots = defaultBrowseRoots(homeDir);
 const imageRoots = [...new Set([...browseRoots, resolve(tmpdir()), resolve("/tmp")])];
 const fileRoots = [...new Set([...browseRoots, defaultCwd, resolve(tmpdir()), resolve("/tmp")])];
@@ -496,7 +497,7 @@ const server = createServer(async (req, res) => {
   }
   if (url.pathname === "/api/config") {
     res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-    res.end(JSON.stringify({ home: homeDir, defaultCwd, reviewRoot: reviewRoots[0] }));
+    res.end(JSON.stringify({ home: homeDir, defaultCwd, reviewRoot: reviewRoots[0], projectless }));
     return;
   }
   if (url.pathname === "/api/workspace/context") {

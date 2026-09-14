@@ -200,6 +200,17 @@ bun run build
 bun dist/server.js
 ```
 
+## Docker
+
+仓库包含用于本地容器部署的 Compose 配置。启动前请将 `CODEX_BIN` 设置为 Codex CLI 可执行文件的路径；该路径会以只读方式挂载到容器中。应用默认以无项目模式启动，并通过配置的卷保存 Codex 状态。
+
+```bash
+export CODEX_BIN="$HOME/.codex/packages/standalone/releases/VERSION/bin/codex"
+docker compose up -d --build
+```
+
+Compose 示例不会挂载宿主机 Docker socket。镜像会以配置的 `PUID`/`PGID` 用户运行，并通过环境变量接收运行时配置。
+
 ## 测试
 
 如果本机没有兼容的 Chrome/Edge，可安装 Playwright Chromium：
