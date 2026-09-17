@@ -100,6 +100,11 @@ Object.assign(ZH_CN, {
   "Changes reapplied": "更改已重新应用",
   "This task is currently running in another Codex app or CLI. Close it there, then try again.": "此任务正在另一个 Codex 应用或 CLI 中运行。请先在那里关闭或结束任务，然后重试。",
   "This task could not be found. Refresh the task list and try again.": "找不到此任务。请刷新任务列表后重试。",
+  "Delete thread": "删除任务",
+  "Delete thread “{title}”": "删除任务“{title}”",
+  "Delete “{title}”? This permanently deletes the thread and its descendants.": "删除“{title}”？这将永久删除此任务及其子任务。",
+  "Thread deleted": "任务已删除",
+  "Could not delete thread": "无法删除任务",
 });
 
 Object.assign(ZH_CN, {
