@@ -51,6 +51,8 @@ const publicDir = resolve(appRoot, "public");
 const homeDir = process.env.HOME || process.cwd();
 const projectless = process.env.CODEX_WEBUI_PROJECTLESS === "true";
 const configuredReviewRoot = process.env.CODEX_WEBUI_REVIEW_ROOT || null;
+const ntfyTopic = process.env.CODEX_WEBUI_NTFY_TOPIC || null;
+const ntfyUrl = (process.env.CODEX_WEBUI_NTFY_URL || "https://ntfy.sh").replace(/\/+$/, "");
 if (projectless && !configuredReviewRoot) {
   throw new Error("CODEX_WEBUI_REVIEW_ROOT is required when CODEX_WEBUI_PROJECTLESS=true");
 }
@@ -190,7 +192,25 @@ function handleCodex(message: any) {
     if (message.method === "item/completed" && message.params?.item?.type === "fileChange") {
       recordFileChangeDiff({ ...message.params, changes: message.params.item.changes });
     }
+    if (message.method === "turn/completed") notifyNtfyTurnCompleted(message.params || {});
     broadcast({ type: "codex/notification", payload: message });
+  }
+}
+
+async function notifyNtfyTurnCompleted(params: any) {
+  if (!ntfyTopic) return;
+  const turnId = typeof params?.turn?.id === "string" ? params.turn.id : "";
+  const threadId = typeof params?.threadId === "string" ? params.threadId : "";
+  const body = `Codex task completed${threadId ? ` (thread ${threadId.slice(0, 8)})` : ""}`;
+  try {
+    await fetch(`${ntfyUrl}/${encodeURIComponent(ntfyTopic)}`, {
+      method: "POST",
+      headers: { Title: "Codex task completed", Tags: "white_check_mark", ...(turnId ? { "X-Turn-Id": turnId } : {}) },
+      body,
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch (error) {
+    console.error("ntfy notification failed:", error instanceof Error ? error.message : error);
   }
 }
 

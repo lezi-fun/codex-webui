@@ -13,7 +13,7 @@ let browser;
 try{
   const imageResponse=await fetch(`${base}/api/images/local?path=${encodeURIComponent(imageA)}&cwd=${encodeURIComponent('/tmp')}`);
   if(!imageResponse.ok||imageResponse.headers.get('content-type')!=='image/png'||(await imageResponse.arrayBuffer()).byteLength!==png.byteLength)throw new Error('Local image endpoint did not return the PNG');
-  const deniedResponse=await fetch(`${base}/api/images/local?path=${encodeURIComponent('/Users/home/Projects/codex-webui/package.json')}`);
+  const deniedResponse=await fetch(`${base}/api/images/local?path=${encodeURIComponent(new URL('../package.json',import.meta.url).pathname)}`);
   if(deniedResponse.status!==404)throw new Error(`Non-image local files must be rejected, got ${deniedResponse.status}`);
 
   browser=await chromium.launch(launchOptions());

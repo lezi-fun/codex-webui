@@ -1,4 +1,6 @@
-import { realpathSync } from 'node:fs';
+import { mkdtempSync, realpathSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, test } from 'bun:test';
 import { createTerminalSession, normalizeTerminalResize, resolveTerminalCwd } from '../terminal-service.js';
 
@@ -11,10 +13,13 @@ describe('terminal service', () => {
   });
 
   test('keeps terminal cwd inside the same allowed browse roots', () => {
-    const roots = ['/Users/home'];
-    expect(resolveTerminalCwd('/Users/home/projects/codex-webui', roots, '/Users/home/projects')).toBe(realpathSync('/Users/home/projects/codex-webui'));
-    expect(resolveTerminalCwd('/private/tmp', roots, '/Users/home/projects')).toBe(realpathSync('/Users/home/projects'));
-    expect(resolveTerminalCwd(null, roots, '/Users/home/projects')).toBe(realpathSync('/Users/home/projects'));
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'codex-webui-test-root-')));
+    const project = realpathSync(mkdtempSync(join(root, 'project-')));
+    const outside = realpathSync(mkdtempSync(join(tmpdir(), 'codex-webui-test-outside-')));
+    const roots = [root];
+    expect(resolveTerminalCwd(project, roots, root)).toBe(project);
+    expect(resolveTerminalCwd(outside, roots, root)).toBe(root);
+    expect(resolveTerminalCwd(null, roots, root)).toBe(root);
   });
 
   test('reports a missing PTY worker runtime without crashing the server', async () => {
@@ -23,7 +28,7 @@ describe('terminal service', () => {
     try {
       const result = await new Promise(resolve => {
         const session = createTerminalSession({
-          cwd: realpathSync('/Users/home/projects'),
+          cwd: tmpdir(),
           onData: () => {},
           onExit: event => { session.kill(); resolve(event); },
         });
