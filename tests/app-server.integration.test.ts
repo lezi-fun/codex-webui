@@ -186,7 +186,7 @@ describe("Codex WebUI app-server bridge", () => {
   test("streams a harmless real turn to completion", async () => {
     const started = await rpc("thread/start", {
       cwd: ROOT,
-      model: "gpt-5.4-mini",
+      model: "gpt-6-luna",
       approvalPolicy: "never",
       sandbox: "read-only",
       ephemeral: true,
@@ -196,7 +196,7 @@ describe("Codex WebUI app-server bridge", () => {
     const turn = await rpc("turn/start", {
       threadId,
       input: [{ type: "text", text: "Reply with exactly WEBUI_OK and do not use tools." }],
-      model: "gpt-5.4-mini",
+      model: "gpt-6-luna",
       effort: "low",
       approvalPolicy: "never",
     });

@@ -38,27 +38,27 @@ describe("latest request gate", () => {
 describe("model selection", () => {
   test("keeps only GPT models for the desktop model picker", () => {
     const models = [
-      { model: "gpt-5.6-sol", displayName: "GPT-5.6-Sol" },
+      { model: "gpt-6-astra", displayName: "GPT-6-Astra" },
       { model: "o3", displayName: "o3" },
       { model: "codex-mini", displayName: "Codex Mini" },
-      { id: "gpt-5.5", displayName: "GPT-5.5" },
+      { id: "gpt-6.1-sol", displayName: "GPT-6.1-Sol" },
     ];
-    expect(filterAppModels(models).map((model) => model.model || model.id)).toEqual(["gpt-5.6-sol", "gpt-5.5"]);
+    expect(filterAppModels(models).map((model) => model.model || model.id)).toEqual(["gpt-6-astra", "gpt-6.1-sol"]);
   });
 
   test("selects a model and its advertised default effort", () => {
     const models = [
-      { model: "gpt-5.5", defaultReasoningEffort: "medium", supportedReasoningEfforts: [{ reasoningEffort: "medium" }] },
-      { model: "gpt-5.6-sol", defaultReasoningEffort: "xhigh", supportedReasoningEfforts: [{ reasoningEffort: "high" }, { reasoningEffort: "xhigh" }] },
+      { model: "gpt-6-luna", defaultReasoningEffort: "medium", supportedReasoningEfforts: [{ reasoningEffort: "medium" }] },
+      { model: "gpt-6.1-sol", defaultReasoningEffort: "low", supportedReasoningEfforts: [{ reasoningEffort: "low" }, { reasoningEffort: "xhigh" }] },
     ];
-    expect(selectModelState(models, "gpt-5.6-sol")).toEqual({ model: "gpt-5.6-sol", effort: "xhigh", efforts: ["high", "xhigh"] });
+    expect(selectModelState(models, "gpt-6.1-sol")).toEqual({ model: "gpt-6.1-sol", effort: "low", efforts: ["low", "xhigh"] });
   });
 
   test("falls back to the catalog default when saved model is missing", () => {
     const models = [
-      { model: "gpt-5.5", isDefault: true, defaultReasoningEffort: "medium", supportedReasoningEfforts: [{ reasoningEffort: "medium" }] },
+      { model: "gpt-6-astra", isDefault: true, defaultReasoningEffort: "medium", supportedReasoningEfforts: [{ reasoningEffort: "medium" }] },
     ];
-    expect(selectModelState(models, "removed-model").model).toBe("gpt-5.5");
+    expect(selectModelState(models, "removed-model").model).toBe("gpt-6-astra");
   });
 });
 

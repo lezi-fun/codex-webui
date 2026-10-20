@@ -16,6 +16,37 @@ describe("assistant Markdown and LaTeX rendering", () => {
     expect(html).toContain('class="katex-display"');
   });
 
+  test("renders Codex \\(...\\) and \\[...\\] LaTeX delimiters", () => {
+    const html = renderAssistantMarkdown("已定义：\n\\[\n\\rho=\\frac{|I|}{I_{\\mathrm{lim}}}\n\\]\n\n\\(\\rho\\) 越接近 1。");
+    expect(html).toContain('class="katex-display"');
+    expect(html).toContain('class="katex"');
+    // The delimiters must be consumed, not escaped into literal "[ ... ]" text.
+    expect(html).not.toContain("\\]");
+    expect(html).not.toContain("\\)");
+    expect(html).toContain("越接近 1");
+  });
+
+  test("leaves \\(...\\) inside code spans and fences untouched", () => {
+    const html = renderAssistantMarkdown("`\\(x\\)` 保持原样\n\n```\n\\[y\\]\n```");
+    expect(html).toContain("\\(x\\)");
+    expect(html).toContain("\\[y\\]");
+    expect(html).not.toContain('class="katex"');
+  });
+
+  test("bolds Chinese text against adjacent CJK without needing a space", () => {
+    const html = renderAssistantMarkdown("**首轮可以用 T16。**原 sim 保留样本。\n\n原**“重点”**后文");
+    expect(html).toContain("<strong>首轮可以用 T16。</strong>原 sim");
+    expect(html).toContain("原<strong>“重点”</strong>后文");
+    expect(html).not.toContain("**");
+  });
+
+  test("keeps bold inside code and leaves English emphasis unchanged", () => {
+    const html = renderAssistantMarkdown("`**不该加粗**`\n\n```\n**块内**\n```\n\n**bold**text");
+    expect(html).toContain("**不该加粗**");
+    expect(html).toContain("**块内**");
+    expect(html).toContain("<strong>bold</strong>text");
+  });
+
   test("does not allow raw script or javascript links", () => {
     const html = renderAssistantMarkdown('<script>alert(1)</script> [bad](javascript:alert(1))');
     expect(html).not.toContain("<script");

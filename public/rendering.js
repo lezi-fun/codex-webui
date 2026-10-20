@@ -203,18 +203,52 @@ export function renderItemImages(item = {}, { cwd = "", className = "message-ima
   return `<div class="${escapeHtml(className)}">${images.map(image => renderImagePreview(image.source, { cwd, title: image.title })).join("")}</div>`;
 }
 
+const renderFormula = (formula, displayMode, protectedBlocks) => stash(
+  protectedBlocks,
+  katex.renderToString(formula.trim(), { displayMode, throwOnError: false, strict: "ignore" }),
+);
+
 function renderMath(source, protectedBlocks = []) {
   let text = source.replace(/```([\w+-]*)\n([\s\S]*?)```/g, (_, lang, code) => stash(
     protectedBlocks,
     `<pre><code class="language-${escapeHtml(lang || "text")}">${escapeHtml(code.replace(/\n$/, ""))}</code></pre>`,
   ));
   text = text.replace(/`([^`\n]+)`/g, (_, code) => stash(protectedBlocks, `<code>${escapeHtml(code)}</code>`));
-  text = text.replace(/\$\$([\s\S]+?)\$\$/g, (_, formula) => stash(protectedBlocks, katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false, strict: "ignore" })));
+  // Codex also emits \(...\) and \[...\], which Markdown would otherwise strip the
+  // backslashes from. Stash them before parsing so KaTeX owns the formula. A leading
+  // double backslash is an escaped literal, not a delimiter.
+  text = text.replace(/(?<!\\)\\\[([\s\S]+?)\\\]/g, (match, formula) => (formula.trim() ? renderFormula(formula, true, protectedBlocks) : match));
+  text = text.replace(/(?<!\\)\\\(([\s\S]+?)\\\)/g, (match, formula) => (formula.trim() ? renderFormula(formula, false, protectedBlocks) : match));
+  text = text.replace(/\$\$([\s\S]+?)\$\$/g, (_, formula) => renderFormula(formula, true, protectedBlocks));
   text = text.replace(/(^|[^\\\w])\$([^$\n]+?)\$(?!\d)/g, (whole, prefix, formula) => {
     if (/^\d+(?:\.\d+)?(?:\s|$)/.test(formula.trim())) return whole;
-    return prefix + stash(protectedBlocks, katex.renderToString(formula.trim(), { displayMode: false, throwOnError: false, strict: "ignore" }));
+    return prefix + renderFormula(formula, false, protectedBlocks);
   });
   return { text, protectedBlocks };
+}
+
+// CommonMark only recognizes **...** when the delimiter runs are "flanking". CJK
+// ideographs are letters, not whitespace or punctuation, so 原**“重点”**后文 and
+// **粗体。**中文 are rejected. Pad the outside of a span that borders CJK with an
+// invisible whitespace sentinel so the run becomes flanking, then strip it again.
+// The thin space must sit next to the delimiter, because a zero-width space is not
+// whitespace and would hide the delimiter from the flanking check. Only the full
+// pairs are stripped, so a genuine thin space in the content survives.
+const CJK_CHAR = /[\u2E80-\u303F\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFFEF]/;
+const CJK_PAD_BEFORE = "\u200B\u2009";
+const CJK_PAD_AFTER = "\u2009\u200B";
+const CJK_SENTINELS = /\u200B\u2009|\u2009\u200B/g;
+const stripCjkSentinels = (html = "") => html.replace(CJK_SENTINELS, "");
+
+function padCjkEmphasis(source = "") {
+  return source.replace(/(?<!\*)\*\*(?!\*)[^\n]+?(?<!\*)\*\*/g, (span, offset, whole) => {
+    const prev = offset > 0 ? whole[offset - 1] : "";
+    const next = offset + span.length < whole.length ? whole[offset + span.length] : "";
+    const padBefore = Boolean(prev) && !/\s/.test(prev) && CJK_CHAR.test(prev);
+    const padAfter = Boolean(next) && !/\s/.test(next) && CJK_CHAR.test(next);
+    if (!padBefore && !padAfter) return span;
+    return `${padBefore ? CJK_PAD_BEFORE : ""}${span}${padAfter ? CJK_PAD_AFTER : ""}`;
+  });
 }
 
 function sanitizeHtml(html) {
@@ -230,13 +264,13 @@ function sanitizeHtml(html) {
 export function renderAssistantMarkdown(source = "", { cwd = "" } = {}) {
   const protectedBlocks = [];
   const { text: protectedText } = renderMath(stripAgentInternalMarkup(source), protectedBlocks);
-  const text = protectCodexFileCitations(protectedText, cwd, protectedBlocks);
+  const text = protectCodexFileCitations(padCjkEmphasis(protectedText), cwd, protectedBlocks);
   marked.setOptions({ gfm: true, breaks: true });
   let html = marked.parse(text, { async: false });
   const localLinks = protectLocalProtocolLinks(html);
   html = localLinks.restore(sanitizeHtml(localLinks.html)).replace(/javascript\s*:/gi, "");
   html = html.replace(/\u0000CODEX(\d+)\u0000/g, (_, index) => protectedBlocks[Number(index)] || "");
-  return renderLinks(renderImages(html, cwd), cwd);
+  return stripCjkSentinels(renderLinks(renderImages(html, cwd), cwd));
 }
 
 export { escapeHtml };
