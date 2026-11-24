@@ -36,14 +36,16 @@ describe("latest request gate", () => {
 });
 
 describe("model selection", () => {
-  test("keeps only GPT models for the desktop model picker", () => {
+  test("keeps the full catalog for the desktop model picker", () => {
     const models = [
       { model: "gpt-6-astra", displayName: "GPT-6-Astra" },
       { model: "o3", displayName: "o3" },
       { model: "codex-mini", displayName: "Codex Mini" },
       { id: "gpt-6.1-sol", displayName: "GPT-6.1-Sol" },
+      { id: "group/fast", displayName: "Fast routing group" },
     ];
-    expect(filterAppModels(models).map((model) => model.model || model.id)).toEqual(["gpt-6-astra", "gpt-6.1-sol"]);
+    expect(filterAppModels(models)).toEqual(models);
+    expect(filterAppModels(null)).toEqual([]);
   });
 
   test("selects a model and its advertised default effort", () => {

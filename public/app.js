@@ -109,7 +109,7 @@ function setStatus(kind,text){
 }
 async function loadInitial(refreshAccount=false){
   loadAccount(refreshAccount);
-  try{const [models,threads,profiles]=await Promise.all([rpc('model/list',{limit:50}),rpc('thread/list',{limit:50,sortKey:'recency_at',sortDirection:'desc'}),rpc('permissionProfile/list',{cwd:permissionProfileCwd(),limit:100}).catch(()=>({data:[]}))]);
+  try{const [models,threads,profiles]=await Promise.all([rpc('model/list',{limit:200}),rpc('thread/list',{limit:50,sortKey:'recency_at',sortDirection:'desc'}),rpc('permissionProfile/list',{cwd:permissionProfileCwd(),limit:100}).catch(()=>({data:[]}))]);
     state.models=filterAppModels(models.data||[]);renderModels();applyThreadSummaries(threads.data||[]);setPermissionProfiles(profiles.data||[]);scheduleThreadListRefresh();const rememberedThread=localStorage.getItem(ACTIVE_THREAD_STORAGE_KEY);if(!state.active&&rememberedThread)await openThread(rememberedThread);
   }catch(e){if(!e?.silentTransportSwitch)toast(e.message);}
 }
