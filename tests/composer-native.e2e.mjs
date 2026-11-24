@@ -107,8 +107,7 @@ if(errors.length
   ||!contextUsage.inComposerRight
   ||!contextUsage.beforeDictation
   ||/^GPT-/i.test(home.triggerText||'')
-  ||modelFilter.hasO3
-  ||modelFilter.models.some(model=>!/^gpt(?:[-_.\s]|$)/i.test(model))
+  ||!modelFilter.hasO3
   ||home.trigger.border!=='0px'
   ||modelMain.title!=='Reasoning'
   ||modelMain.effortRows.length<1
