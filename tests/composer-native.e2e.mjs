@@ -11,10 +11,10 @@ await page.click('#newTask');
 await page.waitForFunction(()=>document.querySelector('#modelLabel')?.textContent?.trim()&&!/loading/i.test(document.querySelector('#modelLabel').textContent));
 const modelFilter=await page.evaluate(()=>{
   const api=globalThis.__codexWebuiDebug;
-  const mixed=[...api.state.models,{model:'o3',displayName:'o3'}];
+  const mixed=[...api.state.models,{model:'group/fast',displayName:'Fast routing group'}];
   api.state.models=api.filterAppModels(mixed);
   api.renderModels();
-  return {models:api.state.models.map(model=>model.model),hasO3:api.state.models.some(model=>model.model==='o3')};
+  return {models:api.state.models.map(model=>model.model),hasNonGpt:api.state.models.some(model=>{const name=model.model||model.id||'';return name&&!/^gpt/i.test(name);})};
 });
 
 const home=await page.evaluate(()=>{
@@ -107,7 +107,7 @@ if(errors.length
   ||!contextUsage.inComposerRight
   ||!contextUsage.beforeDictation
   ||/^GPT-/i.test(home.triggerText||'')
-  ||!modelFilter.hasO3
+  ||!modelFilter.hasNonGpt
   ||home.trigger.border!=='0px'
   ||modelMain.title!=='Reasoning'
   ||modelMain.effortRows.length<1

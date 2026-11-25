@@ -30,7 +30,7 @@ export function selectModelState(models, requestedModel) {
 }
 
 export function filterAppModels(models) {
-  return Array.isArray(models) ? models : [];
+  return Array.isArray(models) ? [...models] : [];
 }
 
 export function resolveComposerPlaceholder({

@@ -45,6 +45,7 @@ describe("model selection", () => {
       { id: "group/fast", displayName: "Fast routing group" },
     ];
     expect(filterAppModels(models)).toEqual(models);
+    expect(filterAppModels(models)).not.toBe(models);
     expect(filterAppModels(null)).toEqual([]);
   });
 
